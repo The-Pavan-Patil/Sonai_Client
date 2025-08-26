@@ -1,19 +1,26 @@
 import Sidebar from "./Sidebar"
 import Navbar from "./Navbar"
+import { useSelector } from "react-redux";
+import type { RootState } from "../state/store";
 
 
-const DashboardWrapper : React.FC<{children : React.ReactNode}> = ({children}) => {
+const DashboardLayout : React.FC<{children : React.ReactNode}> = ({children}) => {
+  const isCollapsed = useSelector((state : RootState) => state.sidebar.isCollapsed);
   return (
-    <div className="flex h-screen bg-gray-100">
-      <Sidebar></Sidebar>
+    <div className={` flex bg-gray-50 text-gray-900 w-full min-h-screen`}>
+    <Sidebar/>
+    <main className={`flex flex-col w-full h-full py-7 px-9 bg-gray-50 ${
+          isCollapsed ? "md:pl-24" : "md:pl-72"
+        }`}>
       <Navbar></Navbar>
-      <div className="flex-1 flex flex-col overflow-hidden">
-      
-        <main className="flex-1 overflow-x-hidden overflow-y-auto p-6">
-          {children}
-        </main>
-      </div>
+      {children}</main>
     </div>
+  )
+}
+
+const DashboardWrapper = ({children} : {children : React.ReactNode }) => {
+  return (
+      <DashboardLayout>{children}</DashboardLayout>
   )
 }
 

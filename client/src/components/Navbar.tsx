@@ -1,18 +1,25 @@
 // components/Navbar.tsx
 import React from 'react'
 import { Menu, Bell, Sun, Settings } from 'lucide-react'
+import { useDispatch, useSelector } from 'react-redux';
+import type { RootState } from '../state/store';
+import { setSidebar } from '../state/sidebarSlice';
+
 
 const Navbar: React.FC = () => {
   
-  const isCollapsed = false;
-
+  const isCollapsed = useSelector((state : RootState) => state.sidebar.isCollapsed);
+  const dispatch = useDispatch();
+  const toggleSidebar = () => {
+    dispatch(setSidebar(!isCollapsed));
+  }
   return (
     <div className="flex justify-between items-center w-full mb-7">
       {/* left side of the navbar */}
       <div className="flex justify-between items-center gap-5">
         <button
           className="px-3 py-3 bg-gray-100 rounded-full hover:bg-blue-100"
-          onClick={ () => {}}
+          onClick={toggleSidebar}
         >
           <Menu className="w-4 h-4" />
         </button>
@@ -34,8 +41,8 @@ const Navbar: React.FC = () => {
       <div className="flex justify-center items-center gap-5">
         <div className="hidden md:flex  justify-center items-center gap-5">
           <div>
-            <button onClick={ () => {}} className="">
-             <Sun className="cursor-pointer text-gray-500 size={24}"/>
+            <button onClick={() => {}} className="">
+              <Sun className="cursor-pointer text-gray-500 size={24}"/>
             </button>
           </div>
           <div className="relative">
