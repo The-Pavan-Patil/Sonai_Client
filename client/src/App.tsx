@@ -1,4 +1,5 @@
 import DashboardWrapper from './components/DashboardWrapper';
+import Portfolio from './Pages/Portfolio';
 
 
 
@@ -8,7 +9,7 @@ const App = () => {
 
   return (
       <DashboardWrapper>
-        <div>App works!</div>
+       <Portfolio/>
       </DashboardWrapper>
   )
 }

@@ -16,6 +16,10 @@ const projectSchema = new mongoose.Schema({
     endDate: {
         type: Date,
     },
+    duration : {
+        type: Number,
+        min: 0,
+    },
     status: {
         type: String,
         enum: ['Not Started', 'In Progress', 'Completed', 'On Hold'],
@@ -36,5 +40,11 @@ const projectSchema = new mongoose.Schema({
     location: {
         type: String,
 
-    }
+    },
+    images: [{
+        type : String, required : true
+    }],
+    services: [{
+        type : String , required : true 
+    }],
 }, { timestamps: true });
