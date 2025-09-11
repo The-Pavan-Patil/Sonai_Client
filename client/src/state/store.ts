@@ -1,10 +1,12 @@
 // src/state/store.ts
 import { configureStore } from "@reduxjs/toolkit";
 import sidebarReducer from "./sidebarSlice";
+import projectReducer from "./portfolioSlice";
 
 export const store = configureStore({
   reducer: {
     sidebar: sidebarReducer,
+    portfolio: projectReducer,
   },
 });
 

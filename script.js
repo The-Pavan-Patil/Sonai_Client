@@ -9,22 +9,39 @@
 // }
 // console.log(arr);
 
-let arr = [0,1,0,0,1];
+const { log } = require("node:console")
 
-let j = 0;
-let i = 0;
+// let arr = [0,1,0,0,1];
 
-while(i<arr.length){
-    if( arr[i] == 0 ){
-        let temp = 0;
-        temp = arr[i];
-        arr[i] = arr[j];
-        arr[j] = temp;
-        i++;
-        j++;
+// let j = 0;
+// let i = 0;
+
+// while(i<arr.length){
+//     if( arr[i] == 0 ){
+//         let temp = 0;
+//         temp = arr[i];
+//         arr[i] = arr[j];
+//         arr[j] = temp;
+//         i++;
+//         j++;
+//     }
+//     i++;
+// }
+// console.log(arr);
+
+nums = [1,2,3,4]
+Set = new Set(nums)
+
+console.log(Set);
+console.log(Set.size);
+
+
+ if(nums.length == Set.length){
+        console.log(true);
+        
+
     }
-    i++;
-}
-console.log(arr);
-
-
+    else {
+        console.log(false);
+        
+    }

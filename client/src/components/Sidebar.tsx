@@ -44,7 +44,7 @@ const Sidebar = () => {
         {/* TOP */}
       <div className={`flex justify-between gap-3 md:justify-normal items-center pt-3 ${isCollapsed ? 'px-5' : 'px-8'}`}>
         <div>Logo</div>
-        <h1 className={`${isCollapsed ? 'hidden' : 'block'} font-extrabold text-2xl `}>EdStack</h1>
+        <h1 className={`${isCollapsed ? 'hidden' : 'block'} font-extrabold text-2xl `}>Name</h1>
 
         <button
           className="md:hidden px-3 py-3 bg-gray-100 rounded-full hover:bg-blue-100"
@@ -57,10 +57,10 @@ const Sidebar = () => {
       {/* links */}
       <div className="flex-grow mt-8">
         
-        <SidebarLinks href="/dashboard" icon={Layout} label="Dashboard" isCollapsed={isCollapsed} />
+        <SidebarLinks href="/dashboard" icon={Layout} label="Portfolio" isCollapsed={isCollapsed} />
         <SidebarLinks href="/inventory" icon={Archive} label="Inventory" isCollapsed={isCollapsed} />
-        <SidebarLinks href="/product" icon={Clipboard} label="Product" isCollapsed={isCollapsed} />
-        <SidebarLinks href="/user" icon={User} label="User" isCollapsed={isCollapsed} />
+        <SidebarLinks href="/product" icon={Clipboard} label="Project" isCollapsed={isCollapsed} />
+        <SidebarLinks href="/user" icon={User} label="Admin" isCollapsed={isCollapsed} />
         <SidebarLinks href="/settings" icon={Settings} label="Settings" isCollapsed={isCollapsed} />
 
       </div>
