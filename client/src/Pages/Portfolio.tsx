@@ -1,95 +1,339 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch } from "../state/store";
-import { fetchProjects, selectProjects, selectLoading } from "../state/portfolioSlice";
-import { Award, Building2, DollarSign, Users } from "lucide-react";
+import {
+  fetchProjects,
+  selectProjects,
+  selectLoading,
+} from "../state/portfolioSlice";
+import {
+  Award,
+  Building2,
+  CheckCircle2,
+  DollarSign,
+  Droplet,
+  Filter,
+  Quote,
+  TrendingUp,
+  Users,
+  Wind,
+  Zap,
+} from "lucide-react";
 
 export default function PortfolioPage() {
   const dispatch = useDispatch<AppDispatch>();
   const projects = useSelector(selectProjects);
   const loading = useSelector(selectLoading);
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedProject, setSelectedProject] = useState<any>(null);
 
   useEffect(() => {
     dispatch(fetchProjects());
-    
-    
   }, [dispatch]);
 
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-96 gap-4">
         <div className="w-10 h-10 border-4 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
-        <p className="text-gray-600 text-lg font-medium">Loading our portfolio...</p>
+        <p className="text-gray-600 text-lg font-medium">
+          Loading our portfolio...
+        </p>
       </div>
     );
   }
   const PortfolioStats = () => {
-  const totalProjects = projects.length;
-  const totalBudget = projects.reduce((sum: number, project: any) => sum + (project.budget || 0), 0);
-  const uniqueClients = new Set(projects.map((p: any) => p.client)).size;
-  const featuredProjects = projects.filter((p: any) => p.status === 'featured').length;
+    const totalProjects = projects.length;
+    const totalBudget = projects.reduce(
+      (sum: number, project: any) => sum + (project.budget || 0),
+      0
+    );
+    const uniqueClients = new Set(projects.map((p: any) => p.client)).size;
+    const featuredProjects = projects.filter(
+      (p: any) => p.status === "featured"
+    ).length;
 
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-      <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-6 rounded-xl text-white">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-blue-100 text-sm font-medium">Total Projects</p>
-            <p className="text-3xl font-bold">{totalProjects}</p>
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-6 rounded-xl text-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-blue-100 text-sm font-medium">
+                Total Projects
+              </p>
+              <p className="text-3xl font-bold">{totalProjects}</p>
+            </div>
+            <Building2 className="w-8 h-8 text-blue-200" />
           </div>
-          <Building2 className="w-8 h-8 text-blue-200" />
+        </div>
+        <div className="bg-gradient-to-r from-green-500 to-green-600 p-6 rounded-xl text-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-green-100 text-sm font-medium">
+                Project Value
+              </p>
+              <p className="text-3xl font-bold">
+                ₹{(totalBudget / 10000000).toFixed(1)}Cr
+              </p>
+            </div>
+            <DollarSign className="w-8 h-8 text-green-200" />
+          </div>
+        </div>
+        <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-6 rounded-xl text-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-purple-100 text-sm font-medium">
+                Happy Clients
+              </p>
+              <p className="text-3xl font-bold">{uniqueClients}</p>
+            </div>
+            <Users className="w-8 h-8 text-purple-200" />
+          </div>
+        </div>
+        <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-6 rounded-xl text-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-orange-100 text-sm font-medium">
+                Featured Projects
+              </p>
+              <p className="text-3xl font-bold">{featuredProjects}</p>
+            </div>
+            <Award className="w-8 h-8 text-orange-200" />
+          </div>
         </div>
       </div>
-      <div className="bg-gradient-to-r from-green-500 to-green-600 p-6 rounded-xl text-white">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-green-100 text-sm font-medium">Project Value</p>
-            <p className="text-3xl font-bold">₹{(totalBudget / 10000000).toFixed(1)}Cr</p>
+    );
+  };
+
+  const CategoryFilter = () => {
+    const categories = [
+      { id: "all", label: "All Projects", icon: Building2 },
+      { id: "electrical", label: "Electrical", icon: Zap },
+      { id: "plumbing", label: "Plumbing", icon: Droplet },
+      { id: "hvac", label: "HVAC", icon: Wind },
+      { id: "mixed", label: "Mixed Services", icon: TrendingUp },
+    ];
+
+    return (
+      <div className="flex flex-wrap gap-3 mb-8 justify-center">
+        {categories.map((category) => {
+          const Icon = category.icon;
+          return (
+            <button
+              key={category.id}
+              onClick={() => setSelectedCategory(category.id)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                selectedCategory === category.id
+                  ? "bg-blue-500 text-white shadow-lg"
+                  : "bg-white text-gray-600 border border-gray-300 hover:bg-gray-50"
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              {category.label}
+            </button>
+          );
+        })}
+      </div>
+    );
+  };
+  // Client Testimonials Section
+  const TestimonialsSection = () => {
+    const testimonialsProjects = projects.filter((p: any) => p.testimonial);
+    if (testimonialsProjects.length === 0) return null;
+
+    return (
+      <section className="mb-12">
+        <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
+          Client Testimonials
+        </h2>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {testimonialsProjects.map((project: any) => (
+            <div
+              key={project._id}
+              className="bg-white p-8 rounded-xl shadow-lg border border-gray-100"
+            >
+              <Quote className="w-8 h-8 text-blue-500 mb-4" />
+              <p className="text-gray-700 mb-6 italic leading-relaxed">
+                "{project.testimonial.text}"
+              </p>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
+                  {project.testimonial.author.charAt(0)}
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900">
+                    {project.testimonial.author}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    {project.testimonial.position}
+                  </p>
+                  <p className="text-sm text-blue-600">{project.name}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  };
+  // Filter projects based on selected category
+  const filteredProjects =
+    selectedCategory === "all"
+      ? projects
+      : projects.filter((p: any) => p.category === selectedCategory);
+
+  // Project Modal Component
+  const ProjectModal = ({
+    project,
+    onClose,
+  }: {
+    project: any;
+    onClose: () => void;
+  }) => {
+    if (!project) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="bg-white rounded-xl max-w-4xl max-h-[90vh] overflow-y-auto">
+          <div className="p-6">
+            <div className="flex justify-between items-start mb-4">
+              <h2 className="text-2xl font-bold text-gray-900">
+                {project.name}
+              </h2>
+              <button
+                onClick={onClose}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Project Images */}
+            {project.images && project.images.length > 0 && (
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                {project.images
+                  .slice(0, 4)
+                  .map((img: string, index: number) => (
+                    <img
+                      key={index}
+                      src={img}
+                      alt={project.name}
+                      className="w-full h-48 object-cover rounded-lg"
+                    />
+                  ))}
+              </div>
+            )}
+
+            {/* Project Details */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h3 className="font-semibold mb-3">Project Information</h3>
+                <div className="space-y-2 text-sm">
+                  <p>
+                    <span className="font-medium">Client:</span>{" "}
+                    {project.client}
+                  </p>
+                  <p>
+                    <span className="font-medium">Location:</span>{" "}
+                    {project.location}
+                  </p>
+                  <p>
+                    <span className="font-medium">Duration:</span>{" "}
+                    {project.duration}
+                  </p>
+                  <p>
+                    <span className="font-medium">Completed:</span>{" "}
+                    {project.completedDate}
+                  </p>
+                  <p>
+                    <span className="font-medium">Team Size:</span>{" "}
+                    {project.teamSize} members
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="font-semibold mb-3">Project Stats</h3>
+                <div className="space-y-2 text-sm">
+                  <p>
+                    <span className="font-medium">Area:</span>{" "}
+                    {project.stats?.area}
+                  </p>
+                  <p>
+                    <span className="font-medium">Systems:</span>{" "}
+                    {project.stats?.systems}
+                  </p>
+                  <p>
+                    <span className="font-medium">Efficiency:</span>{" "}
+                    {project.stats?.efficiency}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Services */}
+            {project.services && (
+              <div className="mt-6">
+                <h3 className="font-semibold mb-3">Services Provided</h3>
+                <div className="flex flex-wrap gap-2">
+                  {project.services.map((service: string, index: number) => (
+                    <span
+                      key={index}
+                      className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm"
+                    >
+                      {service}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Features */}
+            {project.features && (
+              <div className="mt-6">
+                <h3 className="font-semibold mb-3">Key Features</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {project.features.map((feature: string, index: number) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-green-500" />
+                      <span className="text-sm">{feature}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-          <DollarSign className="w-8 h-8 text-green-200" />
         </div>
       </div>
-      <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-6 rounded-xl text-white">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-purple-100 text-sm font-medium">Happy Clients</p>
-            <p className="text-3xl font-bold">{uniqueClients}</p>
-          </div>
-          <Users className="w-8 h-8 text-purple-200" />
-        </div>
-      </div>
-      <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-6 rounded-xl text-white">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-orange-100 text-sm font-medium">Featured Projects</p>
-            <p className="text-3xl font-bold">{featuredProjects}</p>
-          </div>
-          <Award className="w-8 h-8 text-orange-200" />
-        </div>
-      </div>
-    </div>
-  );
-};
+    );
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header Section */}
       <div className="text-center pb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">Sonai Engineering Services</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-4">
+          Sonai Engineering Services
+        </h1>
         <p className="text-lg text-gray-600 max-w-6xl mx-auto">
-          Showcasing our expertise in Mechanical, Electrical, and Plumbing services across diverse projects. 
-          From commercial complexes to residential developments, we deliver excellence in every project.
+          Showcasing our expertise in Mechanical, Electrical, and Plumbing
+          services across diverse projects. From commercial complexes to
+          residential developments, we deliver excellence in every project.
         </p>
       </div>
 
-
       <PortfolioStats />
+      <TestimonialsSection />
 
+      <div className="mb-8">
+        <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
+          Our Projects
+        </h2>
+        <CategoryFilter />
+      </div>
 
-      
       {/* Projects Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-8">
-        {projects.map((project) => (
+        {filteredProjects.map((project) => (
           <div
             key={project._id}
             className="bg-white rounded-xl overflow-hidden shadow-lg border border-gray-200 transition-all duration-300 hover:shadow-xl hover:-translate-y-2 group"
@@ -111,7 +355,9 @@ export default function PortfolioPage() {
                 </div>
               ) : (
                 <div className="h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                  <span className="text-white font-medium">No Images Available</span>
+                  <span className="text-white font-medium">
+                    No Images Available
+                  </span>
                 </div>
               )}
             </div>
@@ -121,7 +367,7 @@ export default function PortfolioPage() {
               <h2 className="text-sm font-semibold text-slate-800 mb-3 leading-tight">
                 {project.name}
               </h2>
-              
+
               <p className="text-slate-600 mb-6 leading-relaxed line-clamp-3">
                 {project.description}
               </p>
@@ -136,7 +382,7 @@ export default function PortfolioPage() {
                     {project.client}
                   </span>
                 </div>
-                
+
                 <div className="flex items-start gap-2">
                   <span className="font-semibold text-slate-700 text-sm min-w-16">
                     Location:
@@ -158,19 +404,26 @@ export default function PortfolioPage() {
         ))}
       </div>
 
+      
+      {/* Project Modal */}
+      {selectedProject && (
+        <ProjectModal
+          project={selectedProject}
+          onClose={() => setSelectedProject(null)}
+        />
+      )}
+      
       {/* No Projects Message */}
-      {projects.length === 0 && !loading && (
+      {filteredProjects.length === 0 && !loading && (
         <div className="text-center py-16">
           <div className="w-24 h-24 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
-            <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-            </svg>
+            <Filter className="w-12 h-12 text-gray-400" />
           </div>
           <h3 className="text-xl font-semibold text-slate-700 mb-2">
-            No Projects Available
+            No Projects Found
           </h3>
           <p className="text-slate-500">
-            Check back soon for our latest MEP projects and case studies.
+            Try selecting a different category to view more projects.
           </p>
         </div>
       )}
