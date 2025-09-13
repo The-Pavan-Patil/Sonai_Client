@@ -3,6 +3,7 @@ import axios from "axios";
 import type { RootState } from "./store";
 
 export interface Project {
+  name: string;
   _id: string;
   title: string;
   client: string;
@@ -52,7 +53,7 @@ export const fetchProjects = createAsyncThunk("portfolio/fetchProjects", async (
 const portfolioSlice = createSlice({
   name: "portfolio",
   initialState,
-  reducers: {},
+  reducers: {}, 
   extraReducers: (builder) => {
     builder
       .addCase(fetchProjects.pending, (state) => {
