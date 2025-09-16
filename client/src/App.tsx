@@ -1,17 +1,14 @@
-import DashboardWrapper from './components/DashboardWrapper';
 import Portfolio from './Pages/Portfolio';
-
-
-
+import { Routes, Route } from 'react-router-dom';
+import ProjectDetails from './Pages/ProjectDetails';
 
 const App = () => {
-
-
   return (
-      <DashboardWrapper>
-       <Portfolio/>
-      </DashboardWrapper>
-  )
-}
+    <Routes>
+      <Route path="/" element={<Portfolio/>}/>
+      <Route path="/projects/:projectId" element={<ProjectDetails/>} />
+    </Routes>
+  );
+};
 
 export default App;

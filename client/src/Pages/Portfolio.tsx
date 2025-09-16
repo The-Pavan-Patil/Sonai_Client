@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch } from "../state/store";
 import {
@@ -21,6 +22,7 @@ import {
 } from "lucide-react";
 
 export default function PortfolioPage() {
+  const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const projects = useSelector(selectProjects);
   const loading = useSelector(selectLoading);
@@ -181,131 +183,7 @@ export default function PortfolioPage() {
       ? projects
       : projects.filter((p: any) => p.category === selectedCategory);
 
-  // Project Modal Component
-  const ProjectModal = ({
-    project,
-    onClose,
-  }: {
-    project: any;
-    onClose: () => void;
-  }) => {
-    if (!project) return null;
-
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div className="bg-white rounded-xl max-w-4xl max-h-[90vh] overflow-y-auto">
-          <div className="p-6">
-            <div className="flex justify-between items-start mb-4">
-              <h2 className="text-2xl font-bold text-gray-900">
-                {project.name}
-              </h2>
-              <button
-                onClick={onClose}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Project Images */}
-            {project.images && project.images.length > 0 && (
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                {project.images
-                  .slice(0, 4)
-                  .map((img: string, index: number) => (
-                    <img
-                      key={index}
-                      src={img}
-                      alt={project.name}
-                      className="w-full h-48 object-cover rounded-lg"
-                    />
-                  ))}
-              </div>
-            )}
-
-            {/* Project Details */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h3 className="font-semibold mb-3">Project Information</h3>
-                <div className="space-y-2 text-sm">
-                  <p>
-                    <span className="font-medium">Client:</span>{" "}
-                    {project.client}
-                  </p>
-                  <p>
-                    <span className="font-medium">Location:</span>{" "}
-                    {project.location}
-                  </p>
-                  <p>
-                    <span className="font-medium">Duration:</span>{" "}
-                    {project.duration}
-                  </p>
-                  <p>
-                    <span className="font-medium">Completed:</span>{" "}
-                    {project.completedDate}
-                  </p>
-                  <p>
-                    <span className="font-medium">Team Size:</span>{" "}
-                    {project.teamSize} members
-                  </p>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="font-semibold mb-3">Project Stats</h3>
-                <div className="space-y-2 text-sm">
-                  <p>
-                    <span className="font-medium">Area:</span>{" "}
-                    {project.stats?.area}
-                  </p>
-                  <p>
-                    <span className="font-medium">Systems:</span>{" "}
-                    {project.stats?.systems}
-                  </p>
-                  <p>
-                    <span className="font-medium">Efficiency:</span>{" "}
-                    {project.stats?.efficiency}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Services */}
-            {project.services && (
-              <div className="mt-6">
-                <h3 className="font-semibold mb-3">Services Provided</h3>
-                <div className="flex flex-wrap gap-2">
-                  {project.services.map((service: string, index: number) => (
-                    <span
-                      key={index}
-                      className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm"
-                    >
-                      {service}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Features */}
-            {project.features && (
-              <div className="mt-6">
-                <h3 className="font-semibold mb-3">Key Features</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {project.features.map((feature: string, index: number) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-green-500" />
-                      <span className="text-sm">{feature}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  };
+  
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -336,7 +214,8 @@ export default function PortfolioPage() {
         {filteredProjects.map((project) => (
           <div
             key={project._id}
-            className="bg-white rounded-xl overflow-hidden shadow-lg border border-gray-200 transition-all duration-300 hover:shadow-xl hover:-translate-y-2 group"
+            className="bg-white rounded-xl overflow-hidden shadow-lg border border-gray-200 transition-all duration-300 hover:shadow-xl hover:-translate-y-2 group cursor-pointer"
+            onClick={() => {}}
           >
             {/* Image Section */}
             <div className="relative h-60 overflow-hidden">
@@ -395,23 +274,20 @@ export default function PortfolioPage() {
 
               {/* View More Button (Optional) */}
               <div className="mt-6 pt-4 border-t border-gray-100">
-                <button className="text-blue-600 hover:text-blue-800 font-medium text-sm transition-colors duration-200">
-                  View Details →
-                </button>
+                <Link
+  to={`/projects/${project._id}`}
+  className="text-blue-600 hover:text-blue-800 font-medium text-sm transition-colors duration-200"
+>
+  View Details →
+</Link>
               </div>
             </div>
           </div>
         ))}
       </div>
 
+
       
-      {/* Project Modal */}
-      {selectedProject && (
-        <ProjectModal
-          project={selectedProject}
-          onClose={() => setSelectedProject(null)}
-        />
-      )}
       
       {/* No Projects Message */}
       {filteredProjects.length === 0 && !loading && (

@@ -6,7 +6,7 @@ interface SidebarState {
 }
 
 const initialState: SidebarState = {
-  isCollapsed: false,
+  isCollapsed: true,
 };
 
 const sidebarSlice = createSlice({
