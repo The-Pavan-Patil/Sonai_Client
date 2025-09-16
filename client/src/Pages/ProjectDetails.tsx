@@ -42,8 +42,94 @@ export default function ProjectDetailPage() {
   }
 
   return (
-    <div className="">
+     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Back button */}
+      <div className="mb-6 flex items-center justify-center">
+        <Link to="/" className="flex gap-2 text-blue-600 hover:text-blue-800">
+          <ArrowLeft className="w-4 h-4"/>
+          Back to Projects
+        </Link>
+      </div>
+    {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-3xl text-center font-bold text-gray-900">
+          {project.name}
+        </h1>
+      </div>
+    {/* Image Gallery */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        {project.images?.length > 0 ? (
+          project.images.map((img, idx) => (
+            <img
+              key={idx}
+              src={img}
+              alt={project.name}
+              className="w-full h-80 object-cover rounded-lg shadow-sm"
+            />
+          ))
+        ) : (
+          <div className="h-80 bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center rounded-lg text-white font-semibold">
+            No Images Available
+          </div>
+        )}
+      </div>
       
+      {/* Project Information */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+        {/* Overview */}
+        <div>
+          <h2 className="text-2xl font-semibold text-gray-800 mb-4">Overview</h2>
+          <p className="text-gray-600 leading-relaxed">{project.description}</p>
+        </div>
+
+        {/* Key Details */}
+        <div className="bg-gray-50 p-6 rounded-lg">
+          <h3 className="text-xl font-semibold text-gray-800 mb-4">Project Details</h3>
+          <ul className="space-y-3 text-gray-700 text-sm">
+            <li className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-gray-500" /> <strong>Client:</strong> {project.client}
+            </li>
+            <li className="flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-gray-500" /> <strong>Location:</strong> {project.location}
+            </li>
+            <li className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-gray-500" /> <strong>Completed:</strong> {project.completedDate}
+            </li>
+            <li className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-gray-500" /> <strong>Duration:</strong> {project.duration}
+            </li>
+            <li className="flex items-center gap-2">
+              <DollarSign className="w-4 h-4 text-gray-500" /> <strong>Budget:</strong> ₹{project.budget.toLocaleString()}
+            </li>
+            <li className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-gray-500" /> <strong>Team Size:</strong> {project.teamSize} experts
+            </li>
+          </ul>
+        </div>
+      </div>
+      
+        {/* Services & Features */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+        <div>
+          <h3 className="text-xl font-semibold text-gray-800 mb-3">Services Provided</h3>
+          <ul className="list-disc list-inside text-gray-600 space-y-2">
+            {project.services.map((service, idx) => (
+              <li key={idx}>{service}</li>
+            ))}
+          </ul>
+        </div>
+
+        <div>
+          <h3 className="text-xl font-semibold text-gray-800 mb-3">Key Features</h3>
+          <ul className="list-disc list-inside text-gray-600 space-y-2">
+            {project.features?.map((feature, idx) => (
+              <li key={idx}>{feature}</li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+
     </div>
   );
 }
