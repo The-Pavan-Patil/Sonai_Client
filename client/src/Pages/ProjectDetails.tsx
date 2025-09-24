@@ -4,13 +4,33 @@ import { useParams, Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch } from "../state/store";
 import { fetchProjects, selectProjects, selectLoading } from "../state/portfolioSlice";
-import { ArrowLeft, Award, Building2, Calendar, Clock, DollarSign, Users, Star } from "lucide-react";
+import { ArrowLeft, Award, Building2, Calendar, Clock, DollarSign, Users, Star, Zap, Droplets, Wrench, Thermometer, Shield, CheckCircle } from "lucide-react";
 
 export default function ProjectDetailPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const dispatch = useDispatch<AppDispatch>();
   const projects = useSelector(selectProjects);
   const loading = useSelector(selectLoading);
+
+
+   const getServiceIcon = (service: string) => {
+    const serviceLower = service.toLowerCase();
+    if (serviceLower.includes('electrical')) return <Zap className="w-5 h-5 text-yellow-500" />;
+    if (serviceLower.includes('plumbing')) return <Droplets className="w-5 h-5 text-blue-500" />;
+    if (serviceLower.includes('hvac') || serviceLower.includes('air')) return <Thermometer className="w-5 h-5 text-green-500" />;
+    if (serviceLower.includes('maintenance')) return <Wrench className="w-5 h-5 text-gray-500" />;
+    if (serviceLower.includes('safety') || serviceLower.includes('security')) return <Shield className="w-5 h-5 text-red-500" />;
+    return <CheckCircle className="w-5 h-5 text-purple-500" />;
+  };
+
+  const getCategoryColor = (category: string) => {
+    switch (category) {
+      case 'electrical': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'plumbing': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'hvac': return 'bg-green-100 text-green-800 border-green-200';
+      default: return 'bg-purple-100 text-purple-800 border-purple-200';
+    }
+  };
 
   useEffect(() => {
     if (!projects.length) {
@@ -43,6 +63,7 @@ export default function ProjectDetailPage() {
 
   return (
      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      
       {/* Back button */}
       <div className="mb-6 flex items-center justify-center">
         <Link to="/" className="flex gap-2 text-blue-600 hover:text-blue-800">
