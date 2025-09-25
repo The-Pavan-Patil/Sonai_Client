@@ -20,6 +20,10 @@ import {
   Wind,
   Zap,
 } from "lucide-react";
+import { PointerHighlight } from "../components/pointer-highlight";
+import { Boxes } from "../components/background-boxes";
+import { cn } from "../lib/utils";
+import { LoaderOne } from "../components/loader";
 
 export default function PortfolioPage() {
   const navigate = useNavigate();
@@ -36,10 +40,7 @@ export default function PortfolioPage() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-96 gap-4">
-        <div className="w-10 h-10 border-4 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
-        <p className="text-gray-600 text-lg font-medium">
-          Loading our portfolio...
-        </p>
+        <LoaderOne/>
       </div>
     );
   }
@@ -188,10 +189,23 @@ export default function PortfolioPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header Section */}
+      
       <div className="text-center pb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">
+        <h1 className="text-5xl font-bold font text-gray-900 mb-1">
           Sonai Engineering Services
         </h1>
+      <div className="mx-auto max-w-lg font- py-20 text-2xl font-bold tracking-normal md:text-4xl">
+        Building Comfort, Efficiency, and Sustainability,   
+          <PointerHighlight
+            rectangleClassName="bg-neutral-200 dark:bg-neutral-700 border-neutral-300 dark:border-neutral-600 leading-loose"
+            pointerClassName="text-yellow-500 h-3 w-3"
+            containerClassName="inline-block mr-1"
+          >
+            <span className="relative z-10 p-5"> Together</span>
+          </PointerHighlight>
+         
+        </div>
+        
         <p className="text-lg text-gray-600 max-w-6xl mx-auto">
           Showcasing our expertise in Mechanical, Electrical, and Plumbing
           services across diverse projects. From commercial complexes to

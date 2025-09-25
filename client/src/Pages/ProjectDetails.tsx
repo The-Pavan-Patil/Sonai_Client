@@ -5,6 +5,7 @@ import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch } from "../state/store";
 import { fetchProjects, selectProjects, selectLoading } from "../state/portfolioSlice";
 import { ArrowLeft, Award, Building2, Calendar, Clock, DollarSign, Users, Star, Zap, Droplets, Wrench, Thermometer, Shield, CheckCircle } from "lucide-react";
+import { LoaderOne } from "../components/loader";
 
 export default function ProjectDetailPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -40,10 +41,7 @@ export default function ProjectDetailPage() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-96 gap-4">
-        <div className="w-10 h-10 border-4 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
-        <p className="text-gray-600 text-lg font-medium">Loading project details...</p>
-      </div>
+     <LoaderOne/>
     );
   }
 

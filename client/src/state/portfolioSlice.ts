@@ -2,6 +2,7 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
 import type { RootState } from "./store";
 
+
 export interface Project {
   name: string;
   _id: string;
@@ -50,7 +51,9 @@ export const fetchProjects = createAsyncThunk("portfolio/fetchProjects", async (
   return response.data as Project[];
 });
 
+
 const portfolioSlice = createSlice({
+
   name: "portfolio",
   initialState,
   reducers: {}, 
@@ -71,6 +74,6 @@ const portfolioSlice = createSlice({
 });
 
 export const selectProjects = (state: RootState) => state.portfolio.projects;
-export const selectLoading = (state: RootState) => state.portfolio.loading;
+export const selectLoading =  (state: RootState) => state.portfolio.loading;
 
 export default portfolioSlice.reducer;
