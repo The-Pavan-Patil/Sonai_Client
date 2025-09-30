@@ -3,6 +3,7 @@ import { Archive, Clipboard, Layout, type LucideIcon, Menu, Settings, User } fro
 import { useDispatch, useSelector } from "react-redux";
 import type { RootState } from "../state/store";
 import { setSidebar } from "../state/sidebarSlice";
+import { Link, useLocation } from "react-router-dom";
 
 interface SidebarLinksProps{
   icon : LucideIcon;
@@ -12,20 +13,19 @@ interface SidebarLinksProps{
 }
   
 const SidebarLinks = ({href, icon : Icon, label, isCollapsed}: SidebarLinksProps) => {
-
-  const isActive = window.location.pathname === href;
+  const location = useLocation();
+  const isActive = location.pathname === href;
 
   return (
-     
-        <div className={`
-          cursor-pointer flex items-center 
-          ${ isCollapsed ? 'justify-center py-4': 'justify-start py-4 px-8' } hover:text-blue-500 hover:bg-blue-100 gap-3 transition-colors
-          ${isActive ? "bg-blue-200 text-white" : "" }`}>
-            <Icon className="w-6 h-6 !text-gray-700"/>
-            <span className={`${isCollapsed ? "hidden" : "block"} font-medium text-gray-700`}>{label}</span>
-
-          </div>
-      
+    <Link to={href}>
+      <div className={`
+        cursor-pointer flex items-center
+        ${ isCollapsed ? 'justify-center py-4': 'justify-start py-4 px-8' } hover:text-blue-500 hover:bg-blue-100 gap-3 transition-colors
+        ${isActive ? "bg-blue-200 text-white" : "" }`}>
+          <Icon className="w-6 h-6 !text-gray-700"/>
+          <span className={`${isCollapsed ? "hidden" : "block"} font-medium text-gray-700`}>{label}</span>
+      </div>
+    </Link>
   )
 }
 

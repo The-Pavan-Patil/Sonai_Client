@@ -21,8 +21,6 @@ import {
   Zap,
 } from "lucide-react";
 import { PointerHighlight } from "../components/pointer-highlight";
-import { Boxes } from "../components/background-boxes";
-import { cn } from "../lib/utils";
 import { LoaderOne } from "../components/loader";
 
 export default function PortfolioPage() {

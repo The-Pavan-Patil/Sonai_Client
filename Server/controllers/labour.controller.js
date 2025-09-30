@@ -129,17 +129,27 @@ const updateLabour = async (req, res) => {
 // Delete labour
 const deleteLabour = async (req, res) => {
   try {
-    const labour = await Labour.findOneAndDelete({ labourId: req.params.id });
+    const { id } = req.params;
+    
+    const labour = await Labour.findOneAndDelete({ labourId: id });
+    
     if (!labour) {
-      return res.status(404).json({ success: false, message: 'Labour not found' });
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Labour not found' 
+      });
     }
 
     res.json({
       success: true,
-      message: 'Labour deleted successfully'
+      message: 'Labour deleted successfully',
+      deletedLabour: labour
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ 
+      success: false, 
+      message: error.message 
+    });
   }
 };
 

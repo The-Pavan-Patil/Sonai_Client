@@ -14,6 +14,7 @@ import {
   Edit,
   Trash2,
   Eye,
+  X,
 } from "lucide-react";
 import axios from "axios";
 import * as XLSX from "xlsx";
@@ -84,12 +85,84 @@ export default function AdminDashboard() {
   const [attendanceLoading, setAttendanceLoading] = useState(false);
   const [payrollData, setPayrollData] = useState<PayrollData[]>([]);
   const [payrollLoading, setPayrollLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [showViewModal, setShowViewModal] = useState<boolean>(false);
+  const [showEditModal, setShowEditModal] = useState<boolean>(false);
+  const [selectedLabourForView, setSelectedLabourForView] =
+    useState<Labour | null>(null);
+  const [editingLabour, setEditingLabour] = useState<Labour | null>(null);
   const [payrollForm, setPayrollForm] = useState({
     month: new Date().getMonth() + 1,
     year: new Date().getFullYear(),
     period: "monthly",
     overtimeRate: 1.5,
   });
+
+  // Search and filter function
+  const filteredLabours = labours.filter((labour) => {
+    const matchesSearch =
+      labour.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      labour.labourId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      labour.phone.includes(searchTerm);
+
+    const matchesCategory =
+      categoryFilter === "all" || labour.category === categoryFilter;
+
+    return matchesSearch && matchesCategory;
+  });
+
+  // View labour function
+  const handleViewLabour = (labour: Labour) => {
+    setSelectedLabourForView(labour);
+    setShowViewModal(true);
+  };
+
+  // Edit labour function
+  const handleEditLabour = (labour: Labour) => {
+    setEditingLabour({ ...labour });
+    setShowEditModal(true);
+  };
+
+  // Update labour function
+  const handleUpdateLabour = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingLabour) return;
+
+    try {
+      await axios.put(
+        `http://localhost:5001/api/labours/${editingLabour.labourId}`,
+        editingLabour
+      );
+      setShowEditModal(false);
+      setEditingLabour(null);
+      await fetchLabours();
+      alert("Labour updated successfully!");
+    } catch (error) {
+      console.error("Error updating labour:", error);
+      alert("Error updating labour. Please try again.");
+    }
+  };
+
+  // Delete labour function
+  const handleDeleteLabour = async (labour: Labour) => {
+    if (
+      window.confirm(
+        `Are you sure you want to delete ${labour.name}? This action cannot be undone.`
+      )
+    ) {
+      try {
+        await axios.delete(
+          `http://localhost:5001/api/labours/${labour.labourId}`
+        );
+        await fetchLabours();
+        alert("Labour deleted successfully!");
+      } catch (error) {
+        console.error("Error deleting labour:", error);
+        alert("Error deleting labour. Please try again.");
+      }
+    }
+  };
 
   // Add this function to calculate payroll
   const calculatePayroll = async () => {
@@ -337,7 +410,6 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
-
       {/* Navigation Tabs */}
       <div className="bg-white rounded-xl shadow-sm border mb-8">
         <div className="flex overflow-x-auto">
@@ -362,7 +434,6 @@ export default function AdminDashboard() {
           ))}
         </div>
       </div>
-
       {/* Overview Tab */}
       {activeTab === "overview" && (
         <div className="space-y-8">
@@ -414,23 +485,30 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
-
-      {/* Labour Management Tab */}
+      
       {activeTab === "labours" && (
         <div className="bg-white rounded-xl shadow-sm border">
           <div className="p-6">
+            {/* Enhanced Search and Filter */}
             <div className="flex flex-col sm:flex-row gap-4 mb-6">
               <div className="flex-1">
                 <div className="relative">
                   <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                   <input
                     type="text"
-                    placeholder="Search labours..."
+                    placeholder="Search by name, ID, or phone..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
               </div>
-              <select className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
                 <option value="all">All Categories</option>
                 <option value="electrician">Electrician</option>
                 <option value="plumber">Plumber</option>
@@ -438,8 +516,32 @@ export default function AdminDashboard() {
                 <option value="general">General</option>
                 <option value="supervisor">Supervisor</option>
               </select>
+
+              {/* Search Results Counter */}
+              <div className="flex items-center px-3 py-2 bg-gray-100 rounded-lg">
+                <span className="text-sm text-gray-600">
+                  {filteredLabours.length} of {labours.length} labours
+                </span>
+              </div>
             </div>
 
+            {/* Clear Filters Button */}
+            {(searchTerm || categoryFilter !== "all") && (
+              <div className="mb-4">
+                <button
+                  onClick={() => {
+                    setSearchTerm("");
+                    setCategoryFilter("all");
+                  }}
+                  className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                >
+                  <X className="w-4 h-4" />
+                  Clear Filters
+                </button>
+              </div>
+            )}
+
+            {/* Enhanced Table */}
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -468,67 +570,98 @@ export default function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {labours.map((labour) => (
-                    <tr
-                      key={labour.labourId}
-                      className="border-b border-gray-100 hover:bg-gray-50"
-                    >
-                      <td className="py-3 px-4 font-medium text-blue-600">
-                        {labour.labourId}
-                      </td>
-                      <td className="py-3 px-4">{labour.name}</td>
-                      <td className="py-3 px-4">
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            labour.category === "supervisor"
-                              ? "bg-purple-100 text-purple-800"
-                              : labour.category === "electrician"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : labour.category === "plumber"
-                              ? "bg-blue-100 text-blue-800"
-                              : labour.category === "hvac-tech"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-gray-100 text-gray-800"
-                          }`}
-                        >
-                          {labour.category}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4">{labour.phone}</td>
-                      <td className="py-3 px-4">₹{labour.hourlyRate}/hr</td>
-                      <td className="py-3 px-4">
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            labour.isActive
-                              ? "bg-green-100 text-green-800"
-                              : "bg-red-100 text-red-800"
-                          }`}
-                        >
-                          {labour.isActive ? "Active" : "Inactive"}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex gap-2">
-                          <button className="p-1 text-blue-600 hover:bg-blue-50 rounded">
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          <button className="p-1 text-gray-600 hover:bg-gray-50 rounded">
-                            <Edit className="w-4 h-4" />
-                          </button>
-                          <button className="p-1 text-red-600 hover:bg-red-50 rounded">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                  {filteredLabours.length > 0 ? (
+                    filteredLabours.map((labour) => (
+                      <tr
+                        key={labour.labourId}
+                        className="border-b border-gray-100 hover:bg-gray-50"
+                      >
+                        <td className="py-3 px-4 font-medium text-blue-600">
+                          {labour.labourId}
+                        </td>
+                        <td className="py-3 px-4">{labour.name}</td>
+                        <td className="py-3 px-4">
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              labour.category === "supervisor"
+                                ? "bg-purple-100 text-purple-800"
+                                : labour.category === "electrician"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : labour.category === "plumber"
+                                ? "bg-blue-100 text-blue-800"
+                                : labour.category === "hvac-tech"
+                                ? "bg-green-100 text-green-800"
+                                : "bg-gray-100 text-gray-800"
+                            }`}
+                          >
+                            {labour.category}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">{labour.phone}</td>
+                        <td className="py-3 px-4">₹{labour.hourlyRate}/hr</td>
+                        <td className="py-3 px-4">
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              labour.isActive
+                                ? "bg-green-100 text-green-800"
+                                : "bg-red-100 text-red-800"
+                            }`}
+                          >
+                            {labour.isActive ? "Active" : "Inactive"}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleViewLabour(labour)}
+                              className="p-1 text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                              title="View Details"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleEditLabour(labour)}
+                              className="p-1 text-green-600 hover:bg-green-50 rounded-md transition-colors"
+                              title="Edit Labour"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteLabour(labour)}
+                              className="p-1 text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                              title="Delete Labour"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={7} className="py-12 text-center">
+                        <div className="flex flex-col items-center">
+                          <Users className="w-12 h-12 text-gray-400 mb-4" />
+                          <h3 className="text-lg font-medium text-gray-900 mb-2">
+                            {searchTerm || categoryFilter !== "all"
+                              ? "No matching labours found"
+                              : "No labours found"}
+                          </h3>
+                          <p className="text-gray-600">
+                            {searchTerm || categoryFilter !== "all"
+                              ? "Try adjusting your search or filter criteria."
+                              : "Add your first labour to get started."}
+                          </p>
                         </div>
                       </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>
           </div>
         </div>
       )}
-
       {/* Add Labour Modal */}
       {showAddLabour && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -627,7 +760,6 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
-
       {/* Mark Attendance Modal */}
       {showAttendance && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -1282,6 +1414,151 @@ export default function AdminDashboard() {
               </div>
             )
           )}
+        </div>
+      )}
+      {showEditModal && editingLabour && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 max-h-96 overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Edit Labour
+                </h3>
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleUpdateLabour} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Labour ID
+                  </label>
+                  <input
+                    type="text"
+                    value={editingLabour.labourId}
+                    disabled
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editingLabour.name}
+                    onChange={(e) =>
+                      setEditingLabour({
+                        ...editingLabour,
+                        name: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Phone
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    value={editingLabour.phone}
+                    onChange={(e) =>
+                      setEditingLabour({
+                        ...editingLabour,
+                        phone: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Category
+                  </label>
+                  <select
+                    value={editingLabour.category}
+                    onChange={(e) =>
+                      setEditingLabour({
+                        ...editingLabour,
+                        category: e.target.value as Labour["category"],
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="general">General</option>
+                    <option value="electrician">Electrician</option>
+                    <option value="plumber">Plumber</option>
+                    <option value="hvac-tech">HVAC Tech</option>
+                    <option value="supervisor">Supervisor</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Hourly Rate (₹)
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    value={editingLabour.hourlyRate}
+                    onChange={(e) =>
+                      setEditingLabour({
+                        ...editingLabour,
+                        hourlyRate: Number(e.target.value),
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Status
+                  </label>
+                  <select
+                    value={editingLabour.isActive ? "active" : "inactive"}
+                    onChange={(e) =>
+                      setEditingLabour({
+                        ...editingLabour,
+                        isActive: e.target.value === "active",
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowEditModal(false)}
+                    className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Update Labour
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
         </div>
       )}
     </div>
