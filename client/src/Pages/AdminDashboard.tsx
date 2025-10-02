@@ -289,14 +289,20 @@ export default function AdminDashboard() {
     }
   };
 
-  const fetchAttendance = async (labourId: string) => {
+  const [monthFilter, setMonthFilter] = useState<string>("");
+
+  const fetchAttendance = async (labourId: string, monthYear?: string) => {
     try {
       setAttendanceLoading(true);
-      console.log("Fetching attendance for:", labourId); // Debug log
+      console.log("Fetching attendance for:", labourId, "with month filter:", monthYear); // Debug log
 
-      const response = await axios.get(
-        `http://localhost:5001/api/attendance/labour/${labourId}`
-      );
+      let url = `http://localhost:5001/api/attendance/labour/${labourId}`;
+      if (monthYear) {
+        const [year, month] = monthYear.split("-");
+        url += `?month=${parseInt(month)}&year=${parseInt(year)}`;
+      }
+
+      const response = await axios.get(url);
       console.log("Attendance response:", response.data); // Debug log
 
       setAttendance(response.data.attendance || []);
@@ -907,7 +913,7 @@ export default function AdminDashboard() {
                   onChange={(e) => {
                     setSelectedLabour(e.target.value);
                     if (e.target.value) {
-                      fetchAttendance(e.target.value);
+                      fetchAttendance(e.target.value, monthFilter);
                     } else {
                       setAttendance([]);
                     }
@@ -929,7 +935,11 @@ export default function AdminDashboard() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Month Filter
                 </label>
-                <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                <select
+                  value={monthFilter}
+                  onChange={(e) => setMonthFilter(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
                   <option value="">All Time</option>
                   <option value="2024-09">September 2024</option>
                   <option value="2024-10">October 2024</option>
@@ -940,7 +950,7 @@ export default function AdminDashboard() {
               <div className="lg:w-32 flex items-end">
                 <button
                   onClick={() =>
-                    selectedLabour && fetchAttendance(selectedLabour)
+                    selectedLabour && fetchAttendance(selectedLabour, monthFilter)
                   }
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
                 >

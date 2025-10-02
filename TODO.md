@@ -1,3 +1,0 @@
-- [x] Fix route param in client/src/App.tsx from :project_id to :projectId
-- [x] Add navigation link in client/src/Pages/Portfolio.tsx to ProjectDetail page with projectId
-- [ ] Test navigation and confirm projectId shows on ProjectDetails page
