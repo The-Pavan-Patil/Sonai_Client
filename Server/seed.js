@@ -1,7 +1,5 @@
 import dotenv from "dotenv";
 import mongoose from "mongoose";
-import connectDB from "./config/db.ts";
-import Project from "./models/Project.ts";
 
 dotenv.config();
 await connectDB();
