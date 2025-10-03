@@ -39,6 +39,11 @@ const labourSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
+  site: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Site',
+    required: true
+  },
   emergencyContact: {
     name: { type: String, default: "" },
     phone: { type: String, default: "" }

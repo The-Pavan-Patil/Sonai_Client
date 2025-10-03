@@ -6,6 +6,7 @@ import portfolioRoutes from "./routes/portfolio.routes.js";
 import labourRoutes from "./routes/labour.routes.js";
 import attendanceRoutes from "./routes/attendance.routes.js";
 import payrollRoutes from "./routes/payroll.routes.js";
+import siteRoutes from "./routes/site.routes.js";
 
 // Load env variables
 dotenv.config();
@@ -26,7 +27,7 @@ app.use("/api/labours", labourRoutes);
 app.use("/api/attendances", attendanceRoutes);
 app.use("/api/attendance", attendanceRoutes); 
 app.use("/api/payroll", payrollRoutes);
-
+app.use("/api/sites", siteRoutes);
 
 // Routes
 app.get("/", (req, res) => {

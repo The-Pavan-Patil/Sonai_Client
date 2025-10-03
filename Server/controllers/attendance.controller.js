@@ -30,7 +30,7 @@ const markAttendance = async (req, res) => {
     }
 
     // Verify labour exists
-    const labour = await Labour.findOne({ labourId });
+    const labour = await Labour.findOne({ labourId }).populate('site');
     if (!labour) {
       return res.status(404).json({ success: false, message: 'Labour not found' });
     }
@@ -51,6 +51,7 @@ const markAttendance = async (req, res) => {
 
     const attendanceData = {
       labourId,
+      site: labour.site._id,
       date: new Date(date),
       checkIn,
       checkOut: checkOut || null,
@@ -171,8 +172,22 @@ const calculateSalary = async (req, res) => {
 
 const getAllAttendance = async (req, res) => {
   try {
-    const attendance = await Attendance.find()
-      .populate('labourId', 'name') // Assuming labourId is ref to Labour
+    const { siteId, labourId, date } = req.query;
+    let filter = {};
+
+    if (siteId) {
+      filter.site = siteId;
+    }
+    if (labourId) {
+      filter.labourId = labourId;
+    }
+    if (date) {
+      filter.date = new Date(date);
+    }
+
+    const attendance = await Attendance.find(filter)
+      .populate('labourId', 'name')
+      .populate('site', 'name')
       .sort({ date: -1 });
 
     res.json({

@@ -1,10 +1,42 @@
 import dotenv from "dotenv";
-import mongoose from "mongoose";
+import connectDB from "./config/db.js";
+import Site from "./models/Site.js";
 
 dotenv.config();
 await connectDB();
 
 // Mock seed data for MongoDB
+const sites = [
+  {
+    siteId: "SITE001",
+    name: "Downtown Office Complex",
+    address: "123 Main Street, Downtown, Pune",
+    location: "Pune, Maharashtra",
+    isActive: true
+  },
+  {
+    siteId: "SITE002",
+    name: "Luxury Residential Tower",
+    address: "456 Park Avenue, Mumbai Central",
+    location: "Mumbai, Maharashtra",
+    isActive: true
+  },
+  {
+    siteId: "SITE003",
+    name: "City Hospital",
+    address: "789 Health Road, Nagpur",
+    location: "Nagpur, Maharashtra",
+    isActive: true
+  },
+  {
+    siteId: "SITE004",
+    name: "Grand Mall",
+    address: "321 Shopping Plaza, Bangalore",
+    location: "Bangalore, Karnataka",
+    isActive: true
+  }
+];
+
 const projects = [
   {
     name: "Modern Office Complex - Complete MEP Installation",
@@ -105,6 +137,10 @@ const projects = [
 
 const seedData = async () => {
   try {
+    await Site.deleteMany();
+    await Site.insertMany(sites);
+    console.log("Dummy sites inserted!");
+
     await Project.deleteMany();
     await Project.insertMany(projects);
     console.log("Dummy projects inserted!");

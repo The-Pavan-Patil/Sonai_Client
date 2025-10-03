@@ -5,7 +5,7 @@ import Attendance from '../models/Attendance.js';
 // Get all labours
 const getLabours = async (req, res) => {
   try {
-    const labours = await Labour.find({}).sort({ createdAt: -1 });
+    const labours = await Labour.find({}).populate('site', 'siteId name').sort({ createdAt: -1 });
     res.json({
       success: true,
       count: labours.length,
