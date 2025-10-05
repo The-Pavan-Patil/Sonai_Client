@@ -3,11 +3,9 @@ import { useEffect, useState } from "react";
 import {
   Users,
   Clock,
-  Calendar,
   DollarSign,
   Plus,
   Search,
-  Filter,
   UserPlus,
   FileText,
   TrendingUp,
@@ -16,11 +14,13 @@ import {
   Eye,
   X,
   MapPin,
-  Calculator
+  Calculator,
+  LogOut
 } from "lucide-react";
 import axios from "axios";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import { useAuth } from '../context/AuthContext';
 
 interface Attendance {
   _id: string;
@@ -97,6 +97,7 @@ interface EditingLabour {
 }
 
 export default function AdminDashboard() {
+  const { user , logout } = useAuth();
   const [activeTab, setActiveTab] = useState("overview");
   const [labours, setLabours] = useState<Labour[]>([]);
   const [attendance, setAttendance] = useState<Attendance[]>([]);
@@ -271,7 +272,7 @@ export default function AdminDashboard() {
 
     try {
       await axios.put(
-        `http://localhost:5001/api/labours/${editingLabour.labourId}`,
+        `http://localhost:5001/api/labour/${editingLabour.labourId}`,
         editingLabour
       );
       setShowEditModal(false);
@@ -293,7 +294,7 @@ export default function AdminDashboard() {
     ) {
       try {
         await axios.delete(
-          `http://localhost:5001/api/labours/${labour.labourId}`
+          `http://localhost:5001/api/labour/${labour.labourId}`
         );
         await fetchLabours();
         alert("Labour deleted successfully!");
@@ -424,7 +425,7 @@ export default function AdminDashboard() {
   const fetchLabours = async () => {
     try {
       setLoading(true);
-      const response = await axios.get("http://localhost:5001/api/labours");
+      const response = await axios.get("http://localhost:5001/api/labour");
       setLabours(response.data.labours || []);
     } catch (error) {
       console.error("Error fetching labours:", error);
@@ -490,10 +491,7 @@ export default function AdminDashboard() {
     e.preventDefault();
     console.log("Sending data:", newLabour);
     try {
-      const response = await axios.post(
-        "http://localhost:5001/api/labours",
-        newLabour
-      );
+      const response = await axios.post("http://localhost:5001/api/labour", newLabour);
       console.log("Response:", response.data);
       setShowAddLabour(false);
       setNewLabour({
@@ -506,8 +504,10 @@ export default function AdminDashboard() {
         site: "",
       });
       fetchLabours();
+      alert("Labour added successfully!");
     } catch (error) {
       console.error("Error adding labour:", error);
+      alert("Error adding labour. Please try again.");
     }
   };
 
@@ -560,35 +560,31 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       {/* Header */}
-      <div className="bg-white rounded-xl shadow-sm border p-6 mb-8">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">
-              Admin Dashboard
-            </h1>
-            <p className="text-gray-600">
-              Manage labour attendance, performance, and payroll
-            </p>
-          </div>
-
-          <div className="flex gap-3">
-            <button
-              onClick={() => setShowAddLabour(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors"
-            >
-              <UserPlus className="w-4 h-4" />
-              Add Labour
-            </button>
-            <button
-              onClick={() => setShowAttendance(true)}
-              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors"
-            >
-              <Clock className="w-4 h-4" />
-              Mark Attendance
-            </button>
-          </div>
-        </div>
-      </div>
+      <div className="flex items-center justify-between mb-8">
+  <div>
+    <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+    <p className="text-gray-600">Welcome back, {user?.username}!</p>
+  </div>
+  
+  <div className="flex items-center gap-4">
+    <div className="text-right">
+      <p className="text-sm text-gray-600">Logged in as</p>
+      <p className="font-medium text-gray-900">{user?.username}</p>
+    </div>
+    
+    <button
+      onClick={() => {
+        if (window.confirm('Are you sure you want to logout?')) {
+          logout();
+        }
+      }}
+      className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
+    >
+      <LogOut className="w-4 h-4" />
+      Logout
+    </button>
+  </div>
+</div>
       {/* Navigation Tabs */}
       <div className="bg-white rounded-xl shadow-sm border mb-8">
         <div className="flex overflow-x-auto">
@@ -976,6 +972,10 @@ export default function AdminDashboard() {
                 <option value="supervisor">Supervisor</option>
                 <option value="site-engineer">Site Engineer</option>
               </select>
+
+              <button onClick={() => setShowAddLabour(true)} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                Add Labour
+              </button>
 
               {/* Search Results Counter */}
               <div className="flex items-center px-3 py-2 bg-gray-100 rounded-lg">
@@ -1443,8 +1443,13 @@ export default function AdminDashboard() {
                   <option value="2024-11">November 2024</option>
                 </select>
               </div>
+              <div className="lg:w-32 flex">
+                <button className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors" onClick={() => setShowAttendance(true)}>
+                  Mark Attendance
+                </button>
+              </div>
 
-              <div className="lg:w-32 flex items-end">
+              <div className="lg:w-32 flex ">
                 <button
                   onClick={() =>
                     selectedLabour &&
@@ -1550,10 +1555,10 @@ export default function AdminDashboard() {
                             </td>
                             <td className="py-3 px-4">
                               <div className="flex gap-2">
-                                <button className="p-1 text-blue-600 hover:bg-blue-50 rounded">
+                                <button onClick={()=>{}}className="p-1 text-blue-600 hover:bg-blue-50 rounded">
                                   <Edit className="w-4 h-4" />
                                 </button>
-                                <button className="p-1 text-red-600 hover:bg-red-50 rounded">
+                                <button onClick={()=>{}}className="p-1 text-red-600 hover:bg-red-50 rounded">
                                   <Trash2 className="w-4 h-4" />
                                 </button>
                               </div>

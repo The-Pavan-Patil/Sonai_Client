@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch } from "../state/store";
 import {
@@ -10,7 +10,6 @@ import {
 import {
   Award,
   Building2,
-  CheckCircle2,
   DollarSign,
   Droplet,
   Filter,
@@ -24,12 +23,10 @@ import { PointerHighlight } from "../components/pointer-highlight";
 import { LoaderOne } from "../components/loader";
 
 export default function PortfolioPage() {
-  const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const projects = useSelector(selectProjects);
   const loading = useSelector(selectLoading);
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
-  const [selectedProject, setSelectedProject] = useState<any>(null);
 
   useEffect(() => {
     dispatch(fetchProjects());

@@ -1,15 +1,36 @@
+// App.tsx
+import React from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
+import Login from './Pages/Login';
 import Portfolio from './Pages/Portfolio';
-import { Routes, Route } from 'react-router-dom';
 import ProjectDetails from './Pages/ProjectDetails';
 import AdminDashboard from './Pages/AdminDashboard';
 
 const App = () => {
   return (
-    <Routes>
-      <Route path="/" element={<Portfolio/>}/>
-      <Route path="/admin" element={<AdminDashboard/>}/>
-      <Route path="/projects/:projectId" element={<ProjectDetails/>} />
-    </Routes>
+    <AuthProvider>
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/" element={<Portfolio />} />
+        <Route path="/projects/:projectId" element={<ProjectDetails />} />
+        <Route path="/login" element={<Login />} />
+        
+        {/* Protected Admin Route */}
+        <Route 
+          path="/admin" 
+          element={
+            <ProtectedRoute>
+              <AdminDashboard />
+            </ProtectedRoute>
+          } 
+        />
+        
+        {/* Redirect any unknown route to home */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </AuthProvider>
   );
 };
 

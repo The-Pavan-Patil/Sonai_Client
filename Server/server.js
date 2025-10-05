@@ -7,27 +7,36 @@ import labourRoutes from "./routes/labour.routes.js";
 import attendanceRoutes from "./routes/attendance.routes.js";
 import payrollRoutes from "./routes/payroll.routes.js";
 import siteRoutes from "./routes/site.routes.js";
+import authRoutes from "./routes/auth.routes.js";      
+import authenticateToken from "./middlewares/auth.middleware.js";
 
-// Load env variables
+
+
 dotenv.config();
 
-// Connecting DB
+
+
 connectDB();
 
 const app = express();
 
-// Middleware
+
+
 app.use(cors());
-app.use(express.json());  // replaces bodyParser.json()
+app.use(express.json()); 
+
 app.use(express.urlencoded({ extended: true }));
 
 
-app.use("/api/portfolio", portfolioRoutes);
-app.use("/api/labours", labourRoutes);
-app.use("/api/attendances", attendanceRoutes);
-app.use("/api/attendance", attendanceRoutes); 
-app.use("/api/payroll", payrollRoutes);
-app.use("/api/sites", siteRoutes);
+
+app.use("/api/auth", authRoutes);
+
+
+app.use("/api/portfolio", authenticateToken, portfolioRoutes);
+app.use("/api/labour", authenticateToken, labourRoutes);
+app.use("/api/attendance", authenticateToken, attendanceRoutes);
+app.use("/api/payroll", authenticateToken, payrollRoutes);
+app.use("/api/sites", authenticateToken, siteRoutes);
 
 // Routes
 app.get("/", (req, res) => {
