@@ -1,6 +1,7 @@
 // controllers/labour.controller.js
 import Labour from '../models/Labour.js';
 import Attendance from '../models/Attendance.js';
+import Site from '../models/Site.js';
 
 // Get all labours
 const getLabours = async (req, res) => {
@@ -67,7 +68,19 @@ const createLabour = async (req, res) => {
       ...req.body,
       labourId
     };
-    
+
+    // Convert siteId to ObjectId if provided
+    if (labourData.site && typeof labourData.site === 'string') {
+      const site = await Site.findOne({ siteId: labourData.site });
+      if (!site) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid site ID'
+        });
+      }
+      labourData.site = site._id;
+    }
+
     const labour = new Labour(labourData);
     const savedLabour = await labour.save();
     
@@ -106,6 +119,18 @@ const createLabour = async (req, res) => {
 // Update labour
 const updateLabour = async (req, res) => {
   try {
+    // Convert siteId to ObjectId if provided
+    if (req.body.site && typeof req.body.site === 'string') {
+      const site = await Site.findOne({ siteId: req.body.site });
+      if (!site) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid site ID'
+        });
+      }
+      req.body.site = site._id;
+    }
+
     const labour = await Labour.findOneAndUpdate(
       { labourId: req.params.id },
       req.body,

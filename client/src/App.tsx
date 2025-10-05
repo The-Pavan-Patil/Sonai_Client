@@ -1,7 +1,6 @@
 import Portfolio from './Pages/Portfolio';
 import { Routes, Route } from 'react-router-dom';
 import ProjectDetails from './Pages/ProjectDetails';
-import DashboardPage from './Pages/DashboardPage';
 import AdminDashboard from './Pages/AdminDashboard';
 
 const App = () => {

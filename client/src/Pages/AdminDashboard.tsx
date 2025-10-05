@@ -15,6 +15,8 @@ import {
   Trash2,
   Eye,
   X,
+  MapPin,
+  Calculator
 } from "lucide-react";
 import axios from "axios";
 import * as XLSX from "xlsx";
@@ -36,7 +38,7 @@ interface Labour {
   name: string;
   phone: string;
   address?: string;
-  category: "electrician" | "plumber" | "hvac-tech" | "general" | "supervisor";
+  category: "helper" | "welder" | "fitter" | "supervisor" | "site-engineer";
   hourlyRate: number;
   joinDate: string;
   isActive: boolean;
@@ -78,6 +80,22 @@ interface PayrollData {
   }>;
 }
 
+interface EditingLabour {
+  labourId: string;
+  name: string;
+  phone: string;
+  category: "helper" | "welder" | "fitter" | "supervisor" | "site-engineer";
+  hourlyRate: number;
+  joinDate: string;
+  isActive: boolean;
+  site: string;
+  address?: string;
+  emergencyContact?: {
+    name: string;
+    phone: string;
+  };
+}
+
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
   const [labours, setLabours] = useState<Labour[]>([]);
@@ -95,15 +113,30 @@ export default function AdminDashboard() {
   const [showEditModal, setShowEditModal] = useState<boolean>(false);
   const [selectedLabourForView, setSelectedLabourForView] =
     useState<Labour | null>(null);
-  const [editingLabour, setEditingLabour] = useState<Labour | null>(null);
+  const [editingLabour, setEditingLabour] = useState<EditingLabour | null>(null);
   const [payrollForm, setPayrollForm] = useState({
     month: new Date().getMonth() + 1,
     year: new Date().getFullYear(),
     period: "monthly",
     overtimeRate: 1.5,
   });
-
-
+  const [showAddSite, setShowAddSite] = useState(false);
+  const [showViewSite, setShowViewSite] = useState(false);
+  const [showEditSite, setShowEditSite] = useState(false);
+  const [selectedSiteForView, setSelectedSiteForView] = useState<{
+    siteId: string;
+    name: string;
+    address: string;
+    location: string;
+    isActive: boolean;
+  } | null>(null);
+  const [editingSite, setEditingSite] = useState<{
+    siteId: string;
+    name: string;
+    location: string;
+    address: string;
+  } | null>(null);
+  const [siteSearchTerm, setSiteSearchTerm] = useState<string>("");
 
   // Search and filter function
   const filteredLabours = labours.filter((labour) => {
@@ -117,6 +150,96 @@ export default function AdminDashboard() {
 
     return matchesSearch && matchesCategory;
   });
+  // Add new site form state
+  const [newSite, setNewSite] = useState({
+    name: "",
+    location: "",
+    address: "",
+  });
+  // Site management functions
+  const handleAddSite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await axios.post("http://localhost:5001/api/sites", newSite);
+      setShowAddSite(false);
+      setNewSite({
+        name: "",
+        location: "",
+        address: "",
+      });
+      fetchSites();
+      alert("Site created successfully!");
+    } catch (error) {
+      console.error("Error adding site:", error);
+      alert("Error creating site. Please try again.");
+    }
+  };
+  const handleViewSite = (site: { siteId: string; name: string; address: string; location: string; isActive: boolean }) => {
+    setSelectedSiteForView(site);
+    setShowViewSite(true);
+  };
+
+  const handleEditSite = (site: {
+    siteId: string;
+    name: string;
+    location: string;
+    address: string;
+    isActive: boolean;
+  }) => {
+    setEditingSite({ ...site });
+    setShowEditSite(true);
+  };
+
+  const handleUpdateSite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingSite) return;
+
+    try {
+      await axios.put(
+        `http://localhost:5001/api/sites/${editingSite.siteId}`,
+        editingSite
+      );
+      setShowEditSite(false);
+      setEditingSite(null);
+      await fetchSites();
+      alert("Site updated successfully!");
+    } catch (error) {
+      console.error("Error updating site:", error);
+      alert("Error updating site. Please try again.");
+    }
+  };
+
+  const handleDeleteSite = async (site: { siteId: string; name: string; address: string; location: string; isActive: boolean }) => {
+    if (
+      window.confirm(
+        `Are you sure you want to delete ${site.name}? This action cannot be undone.`
+      )
+    ) {
+      try {
+        await axios.delete(`http://localhost:5001/api/sites/${site.siteId}`);
+        await fetchSites();
+        alert("Site deleted successfully!");
+      } catch (error) {
+        console.error("Error deleting site:", error);
+        alert("Error deleting site. Please try again.");
+      }
+    }
+  };
+
+  // New state for sites
+  const [sites, setSites] = useState<Array<{ siteId: string; name: string; address: string; location: string; isActive: boolean }>>([]);
+  const [siteFilter, setSiteFilter] = useState<string>("");
+
+  // Filter sites
+  const filteredSites = sites.filter((site) => {
+    const matchesSearch =
+      site.name.toLowerCase().includes(siteSearchTerm.toLowerCase()) ||
+      site.siteId.toLowerCase().includes(siteSearchTerm.toLowerCase()) ||
+      (site.location &&
+        site.location.toLowerCase().includes(siteSearchTerm.toLowerCase()));
+
+    return matchesSearch;
+  });
 
   // View labour function
   const handleViewLabour = (labour: Labour) => {
@@ -126,7 +249,18 @@ export default function AdminDashboard() {
 
   // Edit labour function
   const handleEditLabour = (labour: Labour) => {
-    setEditingLabour({ ...labour, site: labour.site?.siteId || "" });
+    setEditingLabour({
+      labourId: labour.labourId,
+      name: labour.name,
+      phone: labour.phone,
+      category: labour.category,
+      hourlyRate: labour.hourlyRate,
+      joinDate: labour.joinDate,
+      isActive: labour.isActive,
+      site: labour.site?.siteId || "",
+      address: labour.address,
+      emergencyContact: labour.emergencyContact,
+    });
     setShowEditModal(true);
   };
 
@@ -259,15 +393,13 @@ export default function AdminDashboard() {
     saveAs(data, fileName);
   };
 
-  // New state for sites
-  const [sites, setSites] = useState<{ siteId: string; name: string }[]>([]);
-  const [siteFilter, setSiteFilter] = useState<string>("");
+
 
   // New Labour Form State
   const [newLabour, setNewLabour] = useState({
     name: "",
     phone: "",
-    category: "general",
+    category: "helper",
     hourlyRate: 0,
     address: "",
     emergencyContact: { name: "", phone: "" },
@@ -315,12 +447,18 @@ export default function AdminDashboard() {
   const fetchAttendance = async (labourId: string, monthYear?: string) => {
     try {
       setAttendanceLoading(true);
-      console.log("Fetching attendance for:", labourId, "with month filter:", monthYear); // Debug log
+      console.log(
+        "Fetching attendance for:",
+        labourId,
+        "with month filter:",
+        monthYear
+      ); // Debug log
 
       let url = `http://localhost:5001/api/attendance/labour/${labourId}`;
       if (monthYear) {
         const [year, month] = monthYear.split("-");
-        url += `?month=${parseInt(month)}&year=${parseInt(year)}`;
+        // Fix: pass year and month as query params, month as number
+        url += `?year=${parseInt(year)}&month=${parseInt(month)}`;
       }
 
       // Add site filter if set
@@ -340,6 +478,14 @@ export default function AdminDashboard() {
     }
   };
 
+  useEffect(() => {
+    if (selectedLabour) {
+      fetchAttendance(selectedLabour, monthFilter);
+    } else {
+      setAttendance([]);
+    }
+  }, [selectedLabour, siteFilter, monthFilter]);
+
   const handleAddLabour = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log("Sending data:", newLabour);
@@ -353,7 +499,7 @@ export default function AdminDashboard() {
       setNewLabour({
         name: "",
         phone: "",
-        category: "general",
+        category: "helper",
         hourlyRate: 0,
         address: "",
         emergencyContact: { name: "", phone: "" },
@@ -448,6 +594,7 @@ export default function AdminDashboard() {
         <div className="flex overflow-x-auto">
           {[
             { id: "overview", label: "Overview", icon: TrendingUp },
+            { id: "sites", label: "Site Management", icon: MapPin },
             { id: "labours", label: "Labour Management", icon: Users },
             { id: "attendance", label: "Attendance", icon: Clock },
             { id: "payroll", label: "Payroll", icon: DollarSign },
@@ -518,7 +665,287 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
-      
+      {/* Site Management Tab */}
+      {activeTab === "sites" && (
+        <div className="space-y-6">
+          {/* Site Management Header */}
+          <div className="bg-white rounded-xl shadow-sm border p-6">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Site Management
+                </h2>
+                <p className="text-gray-600">
+                  Manage all project sites and track labour assignments
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAddSite(true)}
+                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Add New Site
+              </button>
+            </div>
+          </div>
+
+          {/* Site Statistics Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="bg-gradient-to-r from-green-500 to-green-600 p-6 rounded-xl text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-green-100 text-sm font-medium">
+                    Total Sites
+                  </p>
+                  <p className="text-3xl font-bold">{sites.length}</p>
+                </div>
+                <MapPin className="w-8 h-8 text-green-200" />
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-6 rounded-xl text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-blue-100 text-sm font-medium">
+                    Active Sites
+                  </p>
+                  <p className="text-3xl font-bold">
+                    {sites.filter((s) => s.isActive).length}
+                  </p>
+                </div>
+                <TrendingUp className="w-8 h-8 text-blue-200" />
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-6 rounded-xl text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-purple-100 text-sm font-medium">
+                    Total Labour
+                  </p>
+                  <p className="text-3xl font-bold">{labours.length}</p>
+                </div>
+                <Users className="w-8 h-8 text-purple-200" />
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-6 rounded-xl text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-orange-100 text-sm font-medium">
+                    Avg Labour/Site
+                  </p>
+                  <p className="text-3xl font-bold">
+                    {sites.length > 0
+                      ? Math.round(labours.length / sites.length)
+                      : 0}
+                  </p>
+                </div>
+                <Calculator className="w-8 h-8 text-orange-200" />
+              </div>
+            </div>
+          </div>
+
+          {/* Site Management Table */}
+          <div className="bg-white rounded-xl shadow-sm border">
+            <div className="p-6">
+              {/* Search and Filters */}
+              <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                <div className="flex-1">
+                  <div className="relative">
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search sites by name, ID, or location..."
+                      value={siteSearchTerm}
+                      onChange={(e) => setSiteSearchTerm(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center px-3 py-2 bg-gray-100 rounded-lg">
+                  <span className="text-sm text-gray-600">
+                    {filteredSites.length} of {sites.length} sites
+                  </span>
+                </div>
+              </div>
+
+              {/* Clear Filters */}
+              {siteSearchTerm && (
+                <div className="mb-4">
+                  <button
+                    onClick={() => setSiteSearchTerm("")}
+                    className="text-sm text-green-600 hover:text-green-800 flex items-center gap-1"
+                  >
+                    <X className="w-4 h-4" />
+                    Clear Search
+                  </button>
+                </div>
+              )}
+
+              {/* Sites Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">
+                        Site ID
+                      </th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">
+                        Site Name
+                      </th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">
+                        Location
+                      </th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">
+                        Labour Count
+                      </th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">
+                        Categories
+                      </th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">
+                        Status
+                      </th>
+                      <th className="text-left py-3 px-4 font-medium text-gray-900">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredSites.length > 0 ? (
+                      filteredSites.map((site) => {
+                        const siteLabours = labours.filter(
+                          (l) => l.site?.siteId === site.siteId
+                        );
+                        const categories = [
+                          ...new Set(siteLabours.map((l) => l.category)),
+                        ];
+
+                        return (
+                          <tr
+                            key={site.siteId}
+                            className="border-b border-gray-100 hover:bg-gray-50"
+                          >
+                            <td className="py-3 px-4 font-medium text-green-600">
+                              {site.siteId}
+                            </td>
+                            <td className="py-3 px-4 font-semibold">
+                              {site.name}
+                            </td>
+                            <td className="py-3 px-4">
+                              {site.location || "N/A"}
+                            </td>
+                            <td className="py-3 px-4">
+                              <div className="flex items-center gap-2">
+                                <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs font-medium">
+                                  {siteLabours.length} workers
+                                </span>
+                                {siteLabours.length > 0 && (
+                                  <span className="text-green-600 text-xs">
+                                    (
+                                    {
+                                      siteLabours.filter((l) => l.isActive)
+                                        .length
+                                    }{" "}
+                                    active)
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-3 px-4">
+                              <div className="flex flex-wrap gap-1">
+                                {categories.slice(0, 2).map((category) => (
+                                  <span
+                                    key={category}
+                                    className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                      category === "supervisor"
+                                        ? "bg-purple-100 text-purple-800"
+                                        : category === "site-engineer"
+                                        ? "bg-green-100 text-green-800"
+                                        : category === "welder"
+                                        ? "bg-orange-100 text-orange-800"
+                                        : category === "fitter"
+                                        ? "bg-blue-100 text-blue-800"
+                                        : "bg-gray-100 text-gray-800"
+                                    }`}
+                                  >
+                                    {category}
+                                  </span>
+                                ))}
+                                {categories.length > 2 && (
+                                  <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs">
+                                    +{categories.length - 2}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-3 px-4">
+                              <span
+                                className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  site.isActive
+                                    ? "bg-green-100 text-green-800"
+                                    : "bg-red-100 text-red-800"
+                                }`}
+                              >
+                                {site.isActive ? "Active" : "Inactive"}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4">
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => handleViewSite(site)}
+                                  className="p-1 text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                                  title="View Site Details"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleEditSite(site)}
+                                  className="p-1 text-green-600 hover:bg-green-50 rounded-md transition-colors"
+                                  title="Edit Site"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteSite(site)}
+                                  className="p-1 text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                                  title="Delete Site"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan={7} className="py-12 text-center">
+                          <div className="flex flex-col items-center">
+                            <MapPin className="w-12 h-12 text-gray-400 mb-4" />
+                            <h3 className="text-lg font-medium text-gray-900 mb-2">
+                              {siteSearchTerm
+                                ? "No matching sites found"
+                                : "No sites found"}
+                            </h3>
+                            <p className="text-gray-600">
+                              {siteSearchTerm
+                                ? "Try adjusting your search criteria."
+                                : "Add your first site to get started."}
+                            </p>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {activeTab === "labours" && (
         <div className="bg-white rounded-xl shadow-sm border">
           <div className="p-6">
@@ -543,11 +970,11 @@ export default function AdminDashboard() {
                 className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="all">All Categories</option>
-                <option value="electrician">Electrician</option>
-                <option value="plumber">Plumber</option>
-                <option value="hvac-tech">HVAC Tech</option>
-                <option value="general">General</option>
+                <option value="helper">Helper</option>
+                <option value="welder">Welder</option>
+                <option value="fitter">Fitter</option>
                 <option value="supervisor">Supervisor</option>
+                <option value="site-engineer">Site Engineer</option>
               </select>
 
               {/* Search Results Counter */}
@@ -616,18 +1043,20 @@ export default function AdminDashboard() {
                           {labour.labourId}
                         </td>
                         <td className="py-3 px-4">{labour.name}</td>
-                        <td className="py-3 px-4">{labour.site ? labour.site.name : 'N/A'}</td>
+                        <td className="py-3 px-4">
+                          {labour.site ? labour.site.name : "N/A"}
+                        </td>
                         <td className="py-3 px-4">
                           <span
                             className={`px-2 py-1 rounded-full text-xs font-medium ${
                               labour.category === "supervisor"
                                 ? "bg-purple-100 text-purple-800"
-                                : labour.category === "electrician"
-                                ? "bg-yellow-100 text-yellow-800"
-                                : labour.category === "plumber"
-                                ? "bg-blue-100 text-blue-800"
-                                : labour.category === "hvac-tech"
+                                : labour.category === "site-engineer"
                                 ? "bg-green-100 text-green-800"
+                                : labour.category === "welder"
+                                ? "bg-orange-100 text-orange-800"
+                                : labour.category === "fitter"
+                                ? "bg-blue-100 text-blue-800"
                                 : "bg-gray-100 text-gray-800"
                             }`}
                           >
@@ -750,11 +1179,11 @@ export default function AdminDashboard() {
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
-                    <option value="general">General</option>
-                    <option value="electrician">Electrician</option>
-                    <option value="plumber">Plumber</option>
-                    <option value="hvac-tech">HVAC Tech</option>
+                    <option value="helper">Helper</option>
+                    <option value="welder">Welder</option>
+                    <option value="fitter">Fitter</option>
                     <option value="supervisor">Supervisor</option>
+                    <option value="site-engineer">Site Engineer</option>
                   </select>
                 </div>
 
@@ -770,12 +1199,12 @@ export default function AdminDashboard() {
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
-                    <option value="">Select Site</option>
-                    {sites.map((site) => (
-                      <option key={site.siteId} value={site.siteId}>
-                        {site.siteId} - {site.name}
-                      </option>
-                    ))}
+                  <option value="">Select Site</option>
+                  {sites.map((site) => (
+                    <option key={site.siteId} value={site.siteId}>
+                      {site.siteId} - {site.name}
+                    </option>
+                  ))}
                   </select>
                 </div>
 
@@ -960,27 +1389,21 @@ export default function AdminDashboard() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Select Labour
                 </label>
-                <select
-                  value={selectedLabour}
-                  onChange={(e) => {
-                    setSelectedLabour(e.target.value);
-                    if (e.target.value) {
-                      fetchAttendance(e.target.value, monthFilter);
-                    } else {
-                      setAttendance([]);
-                    }
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">Select Labour to View Attendance</option>
-                  {labours
-                    .filter((l) => l.isActive)
-                    .map((labour) => (
-                      <option key={labour.labourId} value={labour.labourId}>
-                        {labour.labourId} - {labour.name}
-                      </option>
-                    ))}
-                </select>
+              <select
+                value={selectedLabour}
+                onChange={(e) => setSelectedLabour(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">Select Labour to View Attendance</option>
+                {labours
+                  .filter((l) => l.isActive)
+                  .filter((l) => (siteFilter ? l.site?.siteId === siteFilter : true))
+                  .map((labour) => (
+                    <option key={labour.labourId} value={labour.labourId}>
+                      {labour.labourId} - {labour.name}
+                    </option>
+                  ))}
+              </select>
               </div>
 
               <div className="lg:w-48">
@@ -989,7 +1412,11 @@ export default function AdminDashboard() {
                 </label>
                 <select
                   value={siteFilter}
-                  onChange={(e) => setSiteFilter(e.target.value)}
+                  onChange={(e) => {
+                    setSiteFilter(e.target.value);
+                    setSelectedLabour(""); // Reset selected labour when site changes
+                    setAttendance([]); // Clear attendance on site change
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">All Sites</option>
@@ -1020,7 +1447,8 @@ export default function AdminDashboard() {
               <div className="lg:w-32 flex items-end">
                 <button
                   onClick={() =>
-                    selectedLabour && fetchAttendance(selectedLabour, monthFilter)
+                    selectedLabour &&
+                    fetchAttendance(selectedLabour, monthFilter)
                   }
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
                 >
@@ -1575,11 +2003,11 @@ export default function AdminDashboard() {
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
-                    <option value="general">General</option>
-                    <option value="electrician">Electrician</option>
-                    <option value="plumber">Plumber</option>
-                    <option value="hvac-tech">HVAC Tech</option>
+                    <option value="helper">Helper</option>
+                    <option value="welder">Welder</option>
+                    <option value="fitter">Fitter</option>
                     <option value="supervisor">Supervisor</option>
+                    <option value="site-engineer">Site Engineer</option>
                   </select>
                 </div>
 
@@ -1591,7 +2019,10 @@ export default function AdminDashboard() {
                     required
                     value={editingLabour.site}
                     onChange={(e) =>
-                      setEditingLabour({ ...editingLabour, site: e.target.value })
+                      setEditingLabour({
+                        ...editingLabour,
+                        site: e.target.value,
+                      })
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
@@ -1655,6 +2086,304 @@ export default function AdminDashboard() {
                     className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                   >
                     Update Labour
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Add Site Modal */}
+      {showAddSite && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-gray-900">
+                  Add New Site
+                </h3>
+                <button
+                  onClick={() => setShowAddSite(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleAddSite} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Site Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newSite.name}
+                    onChange={(e) =>
+                      setNewSite({ ...newSite, name: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    placeholder="e.g., Phoenix Mall Phase 2"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Location
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newSite.location}
+                    onChange={(e) =>
+                      setNewSite({ ...newSite, location: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    placeholder="e.g., Mumbai, Maharashtra"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Address
+                  </label>
+                  <textarea
+                    required
+                    value={newSite.address}
+                    onChange={(e) =>
+                      setNewSite({ ...newSite, address: e.target.value })
+                    }
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    placeholder="Complete site address..."
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddSite(false)}
+                    className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  >
+                    Create Site
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Site Modal */}
+      {showViewSite && selectedSiteForView && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full mx-4 max-h-96 overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-gray-900">
+                  Site Details
+                </h3>
+                <button
+                  onClick={() => setShowViewSite(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {/* Site Information */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Site ID
+                    </label>
+                    <p className="text-lg font-semibold text-green-600">
+                      {selectedSiteForView.siteId}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Site Name
+                    </label>
+                    <p className="text-lg text-gray-900">
+                      {selectedSiteForView.name}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Labour Summary */}
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h4 className="text-lg font-semibold text-gray-900 mb-3">
+                    Labour Summary
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    {labours.filter(
+                      (l) => l.site?.siteId === selectedSiteForView.siteId
+                    ).length > 0 ? (
+                      <>
+                        <div className="text-center p-3 bg-white rounded">
+                          <p className="text-2xl font-bold text-blue-600">
+                            {
+                              labours.filter(
+                                (l) =>
+                                  l.site?.siteId === selectedSiteForView.siteId
+                              ).length
+                            }
+                          </p>
+                          <p className="text-sm text-gray-600">Total Workers</p>
+                        </div>
+                        <div className="text-center p-3 bg-white rounded">
+                          <p className="text-2xl font-bold text-green-600">
+                            {
+                              labours.filter(
+                                (l) =>
+                                  l.site?.siteId ===
+                                    selectedSiteForView.siteId && l.isActive
+                              ).length
+                            }
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            Active Workers
+                          </p>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="col-span-2 text-center py-4">
+                        <p className="text-gray-500">
+                          No labours assigned to this site
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={() => {
+                      setShowViewSite(false);
+                      const fullSite = sites.find(
+                        (s) => s.siteId === selectedSiteForView.siteId
+                      );
+                      if (fullSite) handleEditSite(fullSite);
+                    }}
+                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                  >
+                    Edit Site
+                  </button>
+                  <button
+                    onClick={() => setShowViewSite(false)}
+                    className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Site Modal */}
+      {showEditSite && editingSite && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Edit Site
+                </h3>
+                <button
+                  onClick={() => setShowEditSite(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleUpdateSite} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Site ID
+                  </label>
+                  <input
+                    type="text"
+                    value={editingSite.siteId}
+                    disabled
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Site Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editingSite.name}
+                    onChange={(e) =>
+                      setEditingSite({ ...editingSite, name: e.target.value })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Location
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editingSite.location}
+                    onChange={(e) =>
+                      setEditingSite({
+                        ...editingSite,
+                        location: e.target.value,
+                      })
+                    }
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Address
+                  </label>
+                  <textarea
+                    required
+                    value={editingSite.address}
+                    onChange={(e) =>
+                      setEditingSite({
+                        ...editingSite,
+                        address: e.target.value,
+                      })
+                    }
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowEditSite(false)}
+                    className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  >
+                    Update Site
                   </button>
                 </div>
               </form>

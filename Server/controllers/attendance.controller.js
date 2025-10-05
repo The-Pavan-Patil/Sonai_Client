@@ -1,6 +1,8 @@
+
 // controllers/attendance.controller.js
 import Attendance from '../models/Attendance.js';
 import Labour from '../models/Labour.js';
+import Site from '../models/Site.js';
 
 // Mark attendance
 const markAttendance = async (req, res) => {
@@ -176,7 +178,17 @@ const getAllAttendance = async (req, res) => {
     let filter = {};
 
     if (siteId) {
-      filter.site = siteId;
+      // Find the site by siteId string and get its ObjectId
+      const site = await Site.findOne({ siteId });
+      if (site) {
+        filter.site = site._id;
+      } else {
+        // If site not found, return empty
+        return res.json({
+          success: true,
+          attendance: []
+        });
+      }
     }
     if (labourId) {
       filter.labourId = labourId;
@@ -201,14 +213,35 @@ const getAllAttendance = async (req, res) => {
 const getAttendanceByLabour = async (req, res) => {
   try {
     const { labourId } = req.params;
-    const { month, year } = req.query;
+    const { month, year, siteId } = req.query;
 
     let filter = { labourId };
-    
+
     if (month && year) {
       const startDate = new Date(year, month - 1, 1);
       const endDate = new Date(year, month, 0);
       filter.date = { $gte: startDate, $lte: endDate };
+    }
+
+    if (siteId) {
+      // Find the site by siteId string and get its ObjectId
+      const site = await Site.findOne({ siteId });
+      if (site) {
+        filter.site = site._id;
+      } else {
+        // If site not found, return empty
+        return res.json({
+          success: true,
+          attendance: [],
+          performance: {
+            totalDays: 0,
+            presentDays: 0,
+            totalHours: 0,
+            totalOvertime: 0,
+            attendanceRate: 0
+          }
+        });
+      }
     }
 
     const attendance = await Attendance.find(filter)
@@ -219,7 +252,7 @@ const getAttendanceByLabour = async (req, res) => {
     const totalDays = attendance.length;
     const totalHours = attendance.reduce((sum, att) => sum + att.totalHours, 0);
     const totalOvertime = attendance.reduce((sum, att) => sum + att.overtime, 0);
-    const presentDays = attendance.filter(att => 
+    const presentDays = attendance.filter(att =>
       att.status === 'present' || att.status === 'overtime'
     ).length;
 
@@ -237,9 +270,9 @@ const getAttendanceByLabour = async (req, res) => {
       performance
     });
   } catch (error) {
-    res.status(500).json({ 
-      success: false, 
-      message: error.message 
+    res.status(500).json({
+      success: false,
+      message: error.message
     });
   }
 };

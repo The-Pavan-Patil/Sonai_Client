@@ -22,9 +22,9 @@ const labourSchema = new mongoose.Schema({
   },
   category: {
     type: String,
-    enum: ["electrician", "plumber", "hvac-tech", "general", "supervisor"],
+    enum: ["helper", "welder", "fitter", "supervisor", "site-engineer"],
     required: true,
-    default: "general"
+    default: "helper"
   },
   hourlyRate: {
     type: Number,

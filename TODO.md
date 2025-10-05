@@ -1,19 +1,24 @@
-# TODO: Add Site Information and Functionality
 
-## Backend Changes
-- [x] Create Site model (Server/models/Site.js) with fields: siteId, name, address, etc.
-- [x] Update Labour model (Server/models/Labour.js) to add site reference
-- [x] Update attendance controller (Server/controllers/attendance.controller.js) to support filtering by site
-- [x] Update attendance routes (Server/routes/attendance.routes.js) to include site filter endpoint
-- [x] Add API endpoints for fetching sites (if not already present)
+# Update Labour Categories
 
-## Frontend Changes
-- [x] Update Add Labour modal to include site selection field
-- [x] Update Labour management table to display site name
-- [x] Update Attendance tab to include filter by site
+## Tasks
+- [x] Update Server/models/Labour.js enum to new categories
+- [ ] Update client/src/Pages/AdminDashboard.tsx type definitions
+- [ ] Update client/src/Pages/AdminDashboard.tsx select options
+- [ ] Update client/src/Pages/AdminDashboard.tsx color mappings
+- [ ] Update README.md description
+- [ ] Test the changes
 
-## Data and Testing
-- [x] Update seed data (Server/seed.js) to include sample sites
-- [ ] Test site association with labours
-- [ ] Test attendance filtering by site
-- [ ] Verify frontend-backend integration
+## New Categories
+- helper
+- welder
+- fitter
+- supervisor
+- site-engineer
+
+## Old Categories (to be replaced)
+- electrician
+- plumber
+- hvac-tech
+- general
+- supervisor
