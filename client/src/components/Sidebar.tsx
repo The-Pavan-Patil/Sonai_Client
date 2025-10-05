@@ -4,6 +4,9 @@ import { useDispatch, useSelector } from "react-redux";
 import type { RootState } from "../state/store";
 import { setSidebar } from "../state/sidebarSlice";
 import { Link, useLocation } from "react-router-dom";
+import Logo from "../assets/Logo_full.png";
+import half from "../assets/Logo_half.svg";
+
 
 interface SidebarLinksProps{
   icon : LucideIcon;
@@ -42,16 +45,21 @@ const Sidebar = () => {
   return (
     <div className= {sidebarClassnames} >
         {/* TOP */}
-      <div className={`flex justify-between gap-3 md:justify-normal items-center pt-3 ${isCollapsed ? 'px-5' : 'px-8'}`}>
-        <div>Logo</div>
-        <h1 className={`${isCollapsed ? 'hidden' : 'block'} font-extrabold text-2xl `}>Name</h1>
+      <div className={`flex justify-between gap-3 md:justify-normal items-center pt-3 ${isCollapsed ? 'px-2' : 'px-8'}`}>
+        {isCollapsed ? <div className="pt-4">
+          <img src={half} className=""/>
+        </div> : <div className=" pt-4">
+          <img src={Logo} className=""/>
+        </div>}
 
-        <button
+        <div className="pt-4">
+          <button
           className="md:hidden px-3 py-3 bg-gray-100 rounded-full hover:bg-blue-100"
             onClick={toggleSidebar}
         >
           <Menu className="w-4 h-4" />
         </button>
+        </div>
       </div>
 
       {/* links */}
