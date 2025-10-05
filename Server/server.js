@@ -32,7 +32,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api/auth", authRoutes);
 
 
-app.use("/api/portfolio", authenticateToken, portfolioRoutes);
+app.use("/api/portfolio", portfolioRoutes);
 app.use("/api/labour", authenticateToken, labourRoutes);
 app.use("/api/attendance", authenticateToken, attendanceRoutes);
 app.use("/api/payroll", authenticateToken, payrollRoutes);

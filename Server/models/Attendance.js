@@ -26,6 +26,7 @@ const attendanceSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+
   overtime: {
     type: Number,
     default: 0
@@ -35,8 +36,10 @@ const attendanceSchema = new mongoose.Schema({
     enum: ["present", "absent", "half-day", "overtime"],
     default: "present"
   },
-  notes: {
-    type: String,
+   advanceAmount: {
+    type: Number,
+    default: 0,
+    min: 0
   },
   project: {
     type: mongoose.Schema.Types.ObjectId,

@@ -45,14 +45,14 @@ const Sidebar = () => {
   return (
     <div className= {sidebarClassnames} >
         {/* TOP */}
-      <div className={`flex justify-between gap-3 md:justify-normal items-center pt-3 ${isCollapsed ? 'px-2' : 'px-8'}`}>
-        {isCollapsed ? <div className="pt-4">
+      <div className={`flex justify-between gap-3 md:justify-normal items-center pt-7 ${isCollapsed ? 'px-1' : 'px-8'}`}>
+        {isCollapsed ? <div className="">
           <img src={half} className=""/>
-        </div> : <div className=" pt-4">
+        </div> : <div className="">
           <img src={Logo} className=""/>
         </div>}
 
-        <div className="pt-4">
+        <div className="">
           <button
           className="md:hidden px-3 py-3 bg-gray-100 rounded-full hover:bg-blue-100"
             onClick={toggleSidebar}

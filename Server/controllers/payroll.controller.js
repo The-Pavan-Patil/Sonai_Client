@@ -1,12 +1,19 @@
-// controllers/payroll.controller.js
+// controllers/payroll.controller.js - Updated with advance deduction
 import Labour from '../models/Labour.js';
 import Attendance from '../models/Attendance.js';
+import AdvancePayment from '../models/advancePayment.js';
 
-// Calculate salary for all labours
 const calculateAllSalaries = async (req, res) => {
   try {
-    const { month, year, period = 'monthly', overtimeRate = 1.5 } = req.query;
+    const { month, year, period, overtimeRate } = req.query;
     
+    if (!month || !year) {
+      return res.status(400).json({
+        success: false,
+        message: 'Month and year are required'
+      });
+    }
+
     // Get all active labours
     const labours = await Labour.find({ isActive: true });
     
@@ -18,113 +25,138 @@ const calculateAllSalaries = async (req, res) => {
       });
     }
 
-    const salaryData = [];
-    let startDate, endDate;
+    // Calculate date range
+    const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
+    const endDate = new Date(parseInt(year), parseInt(month), 0);
 
-    // Calculate date range based on period
-    if (period === 'weekly') {
-      // Get current week or specific week
-      const currentDate = new Date();
-      const firstDayOfWeek = new Date(currentDate.setDate(currentDate.getDate() - currentDate.getDay()));
-      startDate = firstDayOfWeek;
-      endDate = new Date(firstDayOfWeek);
-      endDate.setDate(endDate.getDate() + 6);
-    } else {
-      // Monthly calculation
-      startDate = new Date(year, month - 1, 1);
-      endDate = new Date(year, month, 0);
-    }
+    // Get pending advances for this payroll period
+    const pendingAdvances = await AdvancePayment.find({
+      dateGiven: { $lte: endDate },
+      status: 'pending',
+      isActive: true
+    });
 
-    console.log(`Calculating ${period} salaries from ${startDate} to ${endDate}`);
+    // Group advances by labourId
+    const advancesByLabour = pendingAdvances.reduce((acc, advance) => {
+      if (!acc[advance.labourId]) {
+        acc[advance.labourId] = {
+          totalAmount: 0,
+          advances: []
+        };
+      }
+      acc[advance.labourId].totalAmount += advance.amount;
+      acc[advance.labourId].advances.push(advance);
+      return acc;
+    }, {});
 
-    // Calculate salary for each labour
-    for (const labour of labours) {
+    const salaryPromises = labours.map(async (labour) => {
       try {
+        // Get attendance records for the labour in the specified month
         const attendance = await Attendance.find({
           labourId: labour.labourId,
           date: { $gte: startDate, $lte: endDate }
-        }).sort({ date: 1 });
+        });
 
-        // Calculate totals
-        const totalHours = attendance.reduce((sum, att) => sum + (att.totalHours || 0), 0);
-        const totalOvertime = attendance.reduce((sum, att) => sum + (att.overtime || 0), 0);
-        const workingDays = attendance.length;
+        // Calculate working days in the month
+        const workingDays = endDate.getDate();
         const presentDays = attendance.filter(att => 
           att.status === 'present' || att.status === 'overtime'
         ).length;
 
-        // Calculate salary components
+        // Calculate total hours and overtime
+        const totalHours = attendance.reduce((sum, att) => sum + (att.totalHours || 0), 0);
+        const totalOvertime = attendance.reduce((sum, att) => sum + (att.overtime || 0), 0);
         const regularHours = Math.max(0, totalHours - totalOvertime);
-        const baseSalary = regularHours * labour.hourlyRate;
-        const overtimePay = totalOvertime * labour.hourlyRate * parseFloat(overtimeRate);
-        const totalSalary = baseSalary + overtimePay;
 
         // Calculate attendance rate
         const attendanceRate = workingDays > 0 ? (presentDays / workingDays) * 100 : 0;
 
-        salaryData.push({
+        // Calculate salary components
+        const baseSalary = regularHours * labour.hourlyRate;
+        const overtimePay = totalOvertime * labour.hourlyRate * parseFloat(overtimeRate || 1.5);
+        const grossSalary = baseSalary + overtimePay;
+
+        // Get advance amount for this labour
+        const labourAdvances = advancesByLabour[labour.labourId] || { totalAmount: 0, advances: [] };
+        const totalAdvanceAmount = labourAdvances.totalAmount;
+
+        // Calculate net salary after advance deduction
+        const netSalary = Math.max(0, grossSalary - totalAdvanceAmount);
+
+        return {
           labourId: labour.labourId,
           name: labour.name,
           category: labour.category,
           phone: labour.phone,
           hourlyRate: labour.hourlyRate,
+          siteId: labour.assignedSite,
           totalHours: Math.round(totalHours * 100) / 100,
           regularHours: Math.round(regularHours * 100) / 100,
           overtimeHours: Math.round(totalOvertime * 100) / 100,
           workingDays,
           presentDays,
           attendanceRate: Math.round(attendanceRate * 100) / 100,
-          baseSalary: Math.round(baseSalary * 100) / 100,
-          overtimePay: Math.round(overtimePay * 100) / 100,
-          totalSalary: Math.round(totalSalary * 100) / 100,
-          period,
+          baseSalary: Math.round(baseSalary),
+          overtimePay: Math.round(overtimePay),
+          grossSalary: Math.round(grossSalary), // NEW: Gross salary before deductions
+          totalAdvanceAmount: Math.round(totalAdvanceAmount), // NEW: Total advances
+          netSalary: Math.round(netSalary), // NEW: Net salary after advances
+          totalSalary: Math.round(netSalary), // Keep for backward compatibility
+          period: period || 'monthly',
           startDate: startDate.toISOString().split('T')[0],
           endDate: endDate.toISOString().split('T')[0],
-          attendanceRecords: attendance.map(att => ({
-            date: att.date.toISOString().split('T')[0],
-            checkIn: att.checkIn,
-            checkOut: att.checkOut,
-            hours: att.totalHours,
-            overtime: att.overtime,
-            status: att.status
+          advances: labourAdvances.advances.map(adv => ({
+            advanceId: adv.advanceId,
+            amount: adv.amount,
+            reason: adv.reason,
+            dateGiven: adv.dateGiven,
+            description: adv.description
           }))
-        });
+        };
       } catch (error) {
         console.error(`Error calculating salary for ${labour.labourId}:`, error);
-        // Continue with other labours even if one fails
+        return null;
       }
-    }
+    });
 
-    // Calculate summary statistics
-    const summary = {
-      totalLabours: salaryData.length,
-      totalSalaryPayout: salaryData.reduce((sum, s) => sum + s.totalSalary, 0),
-      totalHours: salaryData.reduce((sum, s) => sum + s.totalHours, 0),
-      totalOvertimeHours: salaryData.reduce((sum, s) => sum + s.overtimeHours, 0),
-      averageAttendanceRate: salaryData.length > 0 ? 
-        salaryData.reduce((sum, s) => sum + s.attendanceRate, 0) / salaryData.length : 0
-    };
+    const salaries = (await Promise.all(salaryPromises)).filter(salary => salary !== null);
+
+    // Mark advances as deducted
+    const allAdvanceIds = Object.values(advancesByLabour)
+      .flatMap(labourAdv => labourAdv.advances.map(adv => adv._id));
+
+    if (allAdvanceIds.length > 0) {
+      await AdvancePayment.updateMany(
+        { _id: { $in: allAdvanceIds } },
+        { 
+          status: 'deducted',
+          'deductedInPayroll.month': parseInt(month),
+          'deductedInPayroll.year': parseInt(year),
+          'deductedInPayroll.deductedDate': new Date()
+        }
+      );
+    }
 
     res.json({
       success: true,
-      period,
-      dateRange: {
-        startDate: startDate.toISOString().split('T')[0],
-        endDate: endDate.toISOString().split('T')[0]
-      },
-      summary,
-      salaries: salaryData
+      message: `Payroll calculated for ${salaries.length} labours`,
+      salaries,
+      summary: {
+        totalLabours: salaries.length,
+        totalGrossSalary: salaries.reduce((sum, s) => sum + s.grossSalary, 0),
+        totalAdvances: salaries.reduce((sum, s) => sum + s.totalAdvanceAmount, 0),
+        totalNetSalary: salaries.reduce((sum, s) => sum + s.netSalary, 0)
+      }
     });
 
   } catch (error) {
-    console.error('Error calculating salaries:', error);
+    console.error('Error calculating payroll:', error);
     res.status(500).json({
       success: false,
-      message: 'Error calculating salaries',
+      message: 'Error calculating payroll',
       error: error.message
     });
   }
 };
 
 export { calculateAllSalaries };
-

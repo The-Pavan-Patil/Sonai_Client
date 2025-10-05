@@ -15,12 +15,12 @@ import {
   X,
   MapPin,
   Calculator,
-  LogOut
+  LogOut,
 } from "lucide-react";
 import axios from "axios";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from "../context/AuthContext";
 
 interface Attendance {
   _id: string;
@@ -32,6 +32,21 @@ interface Attendance {
   overtime: number;
   status: string;
   notes?: string;
+  advanceAmount?: number;
+  advanceReason?: string;
+  advanceDate?: string;
+}
+interface AdvancePayment {
+  _id: string;
+  advanceId: string;
+  labourId: string;
+  siteId: string;
+  amount: number;
+  reason: string;
+  description: string;
+  dateGiven: string;
+  status: "pending" | "deducted" | "cancelled";
+  approvedBy: string;
 }
 interface Labour {
   labourId: string;
@@ -53,6 +68,7 @@ interface Labour {
 }
 
 interface PayrollData {
+  siteId: string;
   labourId: string;
   name: string;
   category: string;
@@ -66,17 +82,19 @@ interface PayrollData {
   attendanceRate: number;
   baseSalary: number;
   overtimePay: number;
-  totalSalary: number;
+  grossSalary: number; // NEW: Before deductions
+  totalAdvanceAmount: number; // NEW: Total advances
+  netSalary: number; // NEW: After deductions
+  totalSalary: number; // Keep for compatibility
   period: string;
   startDate: string;
   endDate: string;
-  attendanceRecords?: Array<{
-    date: string;
-    checkIn: string;
-    checkOut?: string;
-    hours: number;
-    overtime: number;
-    status: string;
+  advances?: Array<{
+    advanceId: string;
+    amount: number;
+    reason: string;
+    dateGiven: string;
+    description: string;
   }>;
 }
 
@@ -97,7 +115,7 @@ interface EditingLabour {
 }
 
 export default function AdminDashboard() {
-  const { user , logout } = useAuth();
+  const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState("overview");
   const [labours, setLabours] = useState<Labour[]>([]);
   const [attendance, setAttendance] = useState<Attendance[]>([]);
@@ -114,7 +132,9 @@ export default function AdminDashboard() {
   const [showEditModal, setShowEditModal] = useState<boolean>(false);
   const [selectedLabourForView, setSelectedLabourForView] =
     useState<Labour | null>(null);
-  const [editingLabour, setEditingLabour] = useState<EditingLabour | null>(null);
+  const [editingLabour, setEditingLabour] = useState<EditingLabour | null>(
+    null
+  );
   const [payrollForm, setPayrollForm] = useState({
     month: new Date().getMonth() + 1,
     year: new Date().getFullYear(),
@@ -138,6 +158,18 @@ export default function AdminDashboard() {
     address: string;
   } | null>(null);
   const [siteSearchTerm, setSiteSearchTerm] = useState<string>("");
+  const [attendanceForm, setAttendanceForm] = useState({
+    labourId: "",
+    siteId: "",
+    date: new Date().toISOString().split("T")[0],
+    checkIn: "",
+    checkOut: "",
+    status: "present",
+    notes: "",
+    // NEW: Advance payment fields
+    advanceAmount: 0,
+    advanceReason: "",
+  });
 
   // Search and filter function
   const filteredLabours = labours.filter((labour) => {
@@ -175,7 +207,13 @@ export default function AdminDashboard() {
       alert("Error creating site. Please try again.");
     }
   };
-  const handleViewSite = (site: { siteId: string; name: string; address: string; location: string; isActive: boolean }) => {
+  const handleViewSite = (site: {
+    siteId: string;
+    name: string;
+    address: string;
+    location: string;
+    isActive: boolean;
+  }) => {
     setSelectedSiteForView(site);
     setShowViewSite(true);
   };
@@ -210,7 +248,13 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleDeleteSite = async (site: { siteId: string; name: string; address: string; location: string; isActive: boolean }) => {
+  const handleDeleteSite = async (site: {
+    siteId: string;
+    name: string;
+    address: string;
+    location: string;
+    isActive: boolean;
+  }) => {
     if (
       window.confirm(
         `Are you sure you want to delete ${site.name}? This action cannot be undone.`
@@ -228,7 +272,15 @@ export default function AdminDashboard() {
   };
 
   // New state for sites
-  const [sites, setSites] = useState<Array<{ siteId: string; name: string; address: string; location: string; isActive: boolean }>>([]);
+  const [sites, setSites] = useState<
+    Array<{
+      siteId: string;
+      name: string;
+      address: string;
+      location: string;
+      isActive: boolean;
+    }>
+  >([]);
   const [siteFilter, setSiteFilter] = useState<string>("");
 
   // Filter sites
@@ -394,8 +446,6 @@ export default function AdminDashboard() {
     saveAs(data, fileName);
   };
 
-
-
   // New Labour Form State
   const [newLabour, setNewLabour] = useState({
     name: "",
@@ -408,14 +458,6 @@ export default function AdminDashboard() {
   });
 
   // Attendance Form State
-  const [attendanceForm, setAttendanceForm] = useState({
-    labourId: "",
-    date: new Date().toISOString().split("T")[0],
-    checkIn: "",
-    checkOut: "",
-    status: "present",
-    notes: "",
-  });
 
   useEffect(() => {
     fetchLabours();
@@ -491,7 +533,10 @@ export default function AdminDashboard() {
     e.preventDefault();
     console.log("Sending data:", newLabour);
     try {
-      const response = await axios.post("http://localhost:5001/api/labour", newLabour);
+      const response = await axios.post(
+        "http://localhost:5001/api/labour",
+        newLabour
+      );
       console.log("Response:", response.data);
       setShowAddLabour(false);
       setNewLabour({
@@ -539,11 +584,14 @@ export default function AdminDashboard() {
       // Reset form
       setAttendanceForm({
         labourId: "",
+        siteId: "",
         date: new Date().toISOString().split("T")[0],
         checkIn: "",
         checkOut: "",
         status: "present",
         notes: "",
+        advanceAmount: 0,
+        advanceReason: "",
       });
 
       // Refresh attendance if we're currently viewing this labour's records
@@ -561,30 +609,30 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-gray-50 p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
-  <div>
-    <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-    <p className="text-gray-600">Welcome back, {user?.username}!</p>
-  </div>
-  
-  <div className="flex items-center gap-4">
-    <div className="text-right">
-      <p className="text-sm text-gray-600">Logged in as</p>
-      <p className="font-medium text-gray-900">{user?.username}</p>
-    </div>
-    
-    <button
-      onClick={() => {
-        if (window.confirm('Are you sure you want to logout?')) {
-          logout();
-        }
-      }}
-      className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
-    >
-      <LogOut className="w-4 h-4" />
-      Logout
-    </button>
-  </div>
-</div>
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+          <p className="text-gray-600">Welcome back, {user?.username}!</p>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <div className="text-right">
+            <p className="text-sm text-gray-600">Logged in as</p>
+            <p className="font-medium text-gray-900">{user?.username}</p>
+          </div>
+
+          <button
+            onClick={() => {
+              if (window.confirm("Are you sure you want to logout?")) {
+                logout();
+              }
+            }}
+            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
+          >
+            <LogOut className="w-4 h-4" />
+            Logout
+          </button>
+        </div>
+      </div>
       {/* Navigation Tabs */}
       <div className="bg-white rounded-xl shadow-sm border mb-8">
         <div className="flex overflow-x-auto">
@@ -973,7 +1021,10 @@ export default function AdminDashboard() {
                 <option value="site-engineer">Site Engineer</option>
               </select>
 
-              <button onClick={() => setShowAddLabour(true)} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
+              <button
+                onClick={() => setShowAddLabour(true)}
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+              >
                 Add Labour
               </button>
 
@@ -1199,12 +1250,12 @@ export default function AdminDashboard() {
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
-                  <option value="">Select Site</option>
-                  {sites.map((site) => (
-                    <option key={site.siteId} value={site.siteId}>
-                      {site.siteId} - {site.name}
-                    </option>
-                  ))}
+                    <option value="">Select Site</option>
+                    {sites.map((site) => (
+                      <option key={site.siteId} value={site.siteId}>
+                        {site.siteId} - {site.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -1281,6 +1332,65 @@ export default function AdminDashboard() {
                         </option>
                       ))}
                   </select>
+                </div>
+                <div className="border-t border-gray-200 pt-4">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3">
+                    Advance Payment (Optional)
+                  </h4>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Advance Amount (₹)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={attendanceForm.advanceAmount}
+                        onChange={(e) =>
+                          setAttendanceForm({
+                            ...attendanceForm,
+                            advanceAmount: Number(e.target.value) || 0,
+                          })
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="0"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Reason
+                      </label>
+                      <select
+                        value={attendanceForm.advanceReason}
+                        onChange={(e) =>
+                          setAttendanceForm({
+                            ...attendanceForm,
+                            advanceReason: e.target.value,
+                          })
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="">Select reason</option>
+                        <option value="emergency">Emergency</option>
+                        <option value="medical">Medical</option>
+                        <option value="family">Family</option>
+                        <option value="festival">Festival</option>
+                        <option value="transport">Transport</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {attendanceForm.advanceAmount > 0 && (
+                    <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded">
+                      <p className="text-sm text-yellow-800">
+                        ⚠️ This advance will be deducted from the next payroll
+                        calculation
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -1389,21 +1499,23 @@ export default function AdminDashboard() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Select Labour
                 </label>
-              <select
-                value={selectedLabour}
-                onChange={(e) => setSelectedLabour(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="">Select Labour to View Attendance</option>
-                {labours
-                  .filter((l) => l.isActive)
-                  .filter((l) => (siteFilter ? l.site?.siteId === siteFilter : true))
-                  .map((labour) => (
-                    <option key={labour.labourId} value={labour.labourId}>
-                      {labour.labourId} - {labour.name}
-                    </option>
-                  ))}
-              </select>
+                <select
+                  value={selectedLabour}
+                  onChange={(e) => setSelectedLabour(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">Select Labour to View Attendance</option>
+                  {labours
+                    .filter((l) => l.isActive)
+                    .filter((l) =>
+                      siteFilter ? l.site?.siteId === siteFilter : true
+                    )
+                    .map((labour) => (
+                      <option key={labour.labourId} value={labour.labourId}>
+                        {labour.labourId} - {labour.name}
+                      </option>
+                    ))}
+                </select>
               </div>
 
               <div className="lg:w-48">
@@ -1444,7 +1556,10 @@ export default function AdminDashboard() {
                 </select>
               </div>
               <div className="lg:w-32 flex">
-                <button className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors" onClick={() => setShowAttendance(true)}>
+                <button
+                  className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                  onClick={() => setShowAttendance(true)}
+                >
                   Mark Attendance
                 </button>
               </div>
@@ -1508,6 +1623,9 @@ export default function AdminDashboard() {
                           <th className="text-left py-3 px-4 font-medium text-gray-900">
                             Notes
                           </th>
+                          <th className="text-left py-4 px-6 font-semibold text-gray-900">
+                            Advances
+                          </th>
                           <th className="text-left py-3 px-4 font-medium text-gray-900">
                             Actions
                           </th>
@@ -1553,12 +1671,21 @@ export default function AdminDashboard() {
                             <td className="py-3 px-4 max-w-32 truncate">
                               {record.notes || "-"}
                             </td>
+                            <th className="py-3 px-4 truncate">
+                              {record.advanceAmount}
+                            </th>
                             <td className="py-3 px-4">
                               <div className="flex gap-2">
-                                <button onClick={()=>{}}className="p-1 text-blue-600 hover:bg-blue-50 rounded">
+                                <button
+                                  onClick={() => {}}
+                                  className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                                >
                                   <Edit className="w-4 h-4" />
                                 </button>
-                                <button onClick={()=>{}}className="p-1 text-red-600 hover:bg-red-50 rounded">
+                                <button
+                                  onClick={() => {}}
+                                  className="p-1 text-red-600 hover:bg-red-50 rounded"
+                                >
                                   <Trash2 className="w-4 h-4" />
                                 </button>
                               </div>
@@ -1658,31 +1785,28 @@ export default function AdminDashboard() {
                   <label className="block text-sm font-semibold text-gray-700 mb-3">
                     Overtime Rate Multiplier
                   </label>
-                  <div className="flex items-center space-x-4">
-                    {[1.5, 2.0, 2.5].map((rate) => (
-                      <label key={rate} className="flex items-center">
-                        <input
-                          type="radio"
-                          name="overtimeRate"
-                          value={rate}
-                          checked={payrollForm.overtimeRate === rate}
-                          onChange={(e) =>
-                            setPayrollForm({
-                              ...payrollForm,
-                              overtimeRate: parseFloat(e.target.value),
-                            })
-                          }
-                          className="w-4 h-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                        />
-                        <span className="ml-2 text-gray-700 font-medium">
-                          {rate}x
-                        </span>
-                      </label>
-                    ))}
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="1"
+                      max="5"
+                      value={payrollForm.overtimeRate}
+                      onChange={(e) =>
+                        setPayrollForm({
+                          ...payrollForm,
+                          overtimeRate: parseFloat(e.target.value) || 1.5,
+                        })
+                      }
+                      className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center font-medium"
+                      placeholder="1.5"
+                    />
+                    <span className="text-gray-700 font-medium">
+                      x regular rate
+                    </span>
                   </div>
-                  <p className="text-xs text-gray-500 mt-2">
-                    Standard overtime is 1.5x regular hourly rate
-                  </p>
+
+                
                 </div>
               </div>
 
@@ -1815,13 +1939,20 @@ export default function AdminDashboard() {
                           Labour Details
                         </th>
                         <th className="text-left py-4 px-6 font-semibold text-gray-900">
+                          Site
+                        </th>
+                        <th className="text-left py-4 px-6 font-semibold text-gray-900">
                           Work Summary
                         </th>
                         <th className="text-left py-4 px-6 font-semibold text-gray-900">
                           Salary Breakdown
                         </th>
+                        <th className="text-left py-4 px-6 font-semibold text-gray-900">
+                          Advances
+                        </th>{" "}
+                        {/* NEW */}
                         <th className="text-right py-4 px-6 font-semibold text-gray-900">
-                          Total Salary
+                          Net Salary
                         </th>
                       </tr>
                     </thead>
@@ -1831,6 +1962,7 @@ export default function AdminDashboard() {
                           key={labour.labourId}
                           className="border-b border-gray-100 hover:bg-gray-50"
                         >
+                          {/* Labour Details */}
                           <td className="py-4 px-6">
                             <div>
                               <p className="font-semibold text-gray-900">
@@ -1845,6 +1977,23 @@ export default function AdminDashboard() {
                             </div>
                           </td>
 
+                          {/* Site Column */}
+                          <td className="py-4 px-6">
+                            <div>
+                              <p className="font-medium text-gray-900">
+                                {sites.find((s) => s.siteId === labour.siteId)
+                                  ?.name || "Unknown Site"}
+                              </p>
+                              <p className="text-sm text-gray-600">
+                                {
+                                  sites.find((s) => s.siteId === labour.siteId)
+                                    ?.location
+                                }
+                              </p>
+                            </div>
+                          </td>
+
+                          {/* Work Summary */}
                           <td className="py-4 px-6">
                             <div className="text-sm space-y-1">
                               <p>
@@ -1866,6 +2015,7 @@ export default function AdminDashboard() {
                             </div>
                           </td>
 
+                          {/* Salary Breakdown */}
                           <td className="py-4 px-6">
                             <div className="text-sm space-y-1">
                               <p>
@@ -1877,18 +2027,56 @@ export default function AdminDashboard() {
                                 {labour.overtimePay.toLocaleString()}
                               </p>
                               <div className="pt-1 border-t border-gray-200">
-                                <p className="text-xs text-gray-500">
-                                  Attendance: {labour.attendanceRate.toFixed(1)}
-                                  %
+                                <p className="font-medium text-green-600">
+                                  Gross: ₹{labour.grossSalary.toLocaleString()}
                                 </p>
                               </div>
                             </div>
                           </td>
 
+                          {/* NEW: Advances Column */}
+                          <td className="py-4 px-6">
+                            {labour.totalAdvanceAmount > 0 ? (
+                              <div className="text-sm">
+                                <p className="font-medium text-red-600">
+                                  -₹{labour.totalAdvanceAmount.toLocaleString()}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {labour.advances?.length || 0} advance(s)
+                                </p>
+                                {labour.advances &&
+                                  labour.advances.length > 0 && (
+                                    <div className="mt-1">
+                                      <button
+                                        onClick={() => {
+                                          /* Show advance details */
+                                        }}
+                                        className="text-xs text-blue-600 hover:text-blue-800"
+                                      >
+                                        View Details
+                                      </button>
+                                    </div>
+                                  )}
+                              </div>
+                            ) : (
+                              <span className="text-sm text-gray-400">
+                                No advances
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Net Salary */}
                           <td className="py-4 px-6 text-right">
-                            <p className="text-2xl font-bold text-green-600">
-                              ₹{labour.totalSalary.toLocaleString()}
-                            </p>
+                            <div>
+                              <p className="text-2xl font-bold text-green-600">
+                                ₹{labour.netSalary.toLocaleString()}
+                              </p>
+                              {labour.totalAdvanceAmount > 0 && (
+                                <p className="text-xs text-gray-500">
+                                  After advances
+                                </p>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}
