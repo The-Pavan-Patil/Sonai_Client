@@ -1,58 +1,93 @@
-import mongoose from "mongoose";
+// models/Project.js
+import mongoose from 'mongoose';
 
 const projectSchema = new mongoose.Schema({
-  name: {
+  projectId: {
     type: String,
     required: true,
+    unique: true,
+    uppercase: true
   },
-  description: { 
+  title: {
     type: String,
-  },
-  startDate: {
-    type: Date,
     required: true,
+    trim: true
   },
-  endDate: {
-    type: Date,
-  },
-  duration: {
-    type: Number,
-    min: 0,
-  },
-  status: {
+  description: {
     type: String,
-    enum: ["Not Started", "In Progress", "Completed", "On Hold"],
-    default: "Not Started",
-  },
-  Workers: {
-    type: Number,
-  },
-  budget: {
-    type: Number,
-    min: 0,
+    required: true
   },
   client: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Company",
-    required: true,
+    type: String,
+    required: true
   },
   location: {
     type: String,
+    required: true
   },
-  images: [
-    {
+  projectType: {
+    type: String,
+    enum: ['electrical', 'plumbing', 'hvac', 'firefighting', 'automation', 'mixed'],
+    required: true
+  },
+  status: {
+    type: String,
+    enum: ['completed', 'ongoing', 'upcoming'],
+    default: 'completed'
+  },
+  startDate: {
+    type: Date,
+    required: true
+  },
+  endDate: {
+    type: Date
+  },
+  projectValue: {
+    type: Number,
+    min: 0
+  },
+  duration: {
+    type: String
+  },
+  scope: [{
+    type: String
+  }],
+  features: [{
+    type: String
+  }],
+  technologies: [{
+    type: String
+  }],
+  images: [{
+    url: {
       type: String,
-      required: true,
+      required: true
     },
-  ],
-  services: [
-    {
+    caption: {
       type: String,
-      required: true,
+      default: ""
     },
-  ],
-}, { timestamps: true, collection: "Projects" });
+    isPrimary: {
+      type: Boolean,
+      default: false
+    }
+  }],
+  teamSize: {
+    type: Number,
+    default: 1
+  },
+  isFeatured: {
+    type: Boolean,
+    default: false
+  },
+  isActive: {
+    type: Boolean,
+    default: true
+  }
+}, {
+  timestamps: true,
+  collection: 'Projects'
+});
 
-const Project = mongoose.model("Project", projectSchema);
-
+const Project = mongoose.model('Project', projectSchema);
 export default Project;

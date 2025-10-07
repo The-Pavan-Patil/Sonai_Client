@@ -45,7 +45,7 @@ const Sidebar = () => {
   return (
     <div className= {sidebarClassnames} >
         {/* TOP */}
-      <div className={`flex justify-between gap-3 md:justify-normal items-center pt-7 ${isCollapsed ? 'px-1' : 'px-8'}`}>
+      <div className={`flex justify-center gap-3 md:justify-normal pl-2 items-center pt-7 ${isCollapsed ? '' : 'px-8'}`}>
         {isCollapsed ? <div className="">
           <img src={half} className=""/>
         </div> : <div className="">
@@ -74,7 +74,7 @@ const Sidebar = () => {
       </div>
       {/* footer */}
       <div className={`${isCollapsed ? "hidden": 'block'} mb-10`}>
-        <p className="text-gray-100 text-xs"> © 2024 Edstack</p>
+        <p className="text-gray-100 text-xs"></p>
       </div>
     </div>
   );

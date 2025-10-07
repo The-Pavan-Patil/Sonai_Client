@@ -42,12 +42,12 @@ export default function PortfolioPage() {
   const PortfolioStats = () => {
     const totalProjects = projects.length;
     const totalBudget = projects.reduce(
-      (sum: number, project: any) => sum + (project.budget || 0),
+      (sum: number, project) => sum + (project.projectValue || 0),
       0
     );
-    const uniqueClients = new Set(projects.map((p: any) => p.client)).size;
+    const uniqueClients = new Set(projects.map((p) => p.client)).size;
     const featuredProjects = projects.filter(
-      (p: any) => p.status === "featured"
+      (p) => p.isFeatured
     ).length;
 
     return (
@@ -133,51 +133,12 @@ export default function PortfolioPage() {
       </div>
     );
   };
-  // Client Testimonials Section
-  const TestimonialsSection = () => {
-    const testimonialsProjects = projects.filter((p: any) => p.testimonial);
-    if (testimonialsProjects.length === 0) return null;
 
-    return (
-      <section className="mb-12">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
-          Client Testimonials
-        </h2>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {testimonialsProjects.map((project: any) => (
-            <div
-              key={project._id}
-              className="bg-white p-8 rounded-xl shadow-lg border border-gray-100"
-            >
-              <Quote className="w-8 h-8 text-blue-500 mb-4" />
-              <p className="text-gray-700 mb-6 italic leading-relaxed">
-                "{project.testimonial.text}"
-              </p>
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
-                  {project.testimonial.author.charAt(0)}
-                </div>
-                <div>
-                  <p className="font-semibold text-gray-900">
-                    {project.testimonial.author}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    {project.testimonial.position}
-                  </p>
-                  <p className="text-sm text-blue-600">{project.name}</p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-    );
-  };
   // Filter projects based on selected category
   const filteredProjects =
     selectedCategory === "all"
       ? projects
-      : projects.filter((p: any) => p.category === selectedCategory);
+      : projects.filter((p) => p.projectType === selectedCategory);
 
   
 
@@ -209,7 +170,6 @@ export default function PortfolioPage() {
       </div>
 
       <PortfolioStats />
-      <TestimonialsSection />
 
       <div className="mb-8">
         <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
@@ -222,7 +182,7 @@ export default function PortfolioPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-8">
         {filteredProjects.map((project) => (
           <div
-            key={project._id}
+            key={project.projectId}
             className="bg-white rounded-xl overflow-hidden shadow-lg border border-gray-200 transition-all duration-300 hover:shadow-xl hover:-translate-y-2 group cursor-pointer"
             onClick={() => {}}
           >
@@ -231,7 +191,7 @@ export default function PortfolioPage() {
               {project.images && project.images.length > 0 ? (
                 <div className="relative h-full">
                   <img
-                    src={project.images[0]}
+                    src={project.images[0].url}
                     alt={project.title}
                     className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                   />
@@ -253,7 +213,7 @@ export default function PortfolioPage() {
             {/* Content Section */}
             <div className="p-5">
               <h2 className="text-sm font-semibold text-slate-800 mb-3 leading-tight">
-                {project.name}
+                {project.title}
               </h2>
 
               <p className="text-slate-600 mb-6 leading-relaxed line-clamp-3">
@@ -284,7 +244,7 @@ export default function PortfolioPage() {
               {/* View More Button (Optional) */}
               <div className="mt-6 pt-4 border-t border-gray-100">
                 <Link
-  to={`/projects/${project._id}`}
+  to={`/projects/${project.projectId}`}
   className="text-blue-600 hover:text-blue-800 font-medium text-sm transition-colors duration-200"
 >
   View Details →

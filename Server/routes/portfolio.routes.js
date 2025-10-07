@@ -1,9 +1,24 @@
-import express from "express";
-import { getProjects, createProject } from "../controllers/portfolio.controller.js";
+// routes/portfolio.routes.js
+import express from 'express';
+import { 
+  getProjects, 
+  getProjectById, 
+  createProject, 
+  updateProject, 
+  deleteProject,
+  getFeaturedProjects
+} from '../controllers/portfolio.controller.js';
 
 const router = express.Router();
 
-router.get("/projects", getProjects);
-router.post("/projects", createProject);
+// Public routes
+router.get('/', getProjects);
+router.get('/featured', getFeaturedProjects);
+router.get('/:id', getProjectById);
+
+// Protected routes
+router.post('/',  createProject);
+router.put('/:id',  updateProject);
+router.delete('/:id',  deleteProject);
 
 export default router;

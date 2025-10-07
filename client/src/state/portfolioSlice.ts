@@ -4,33 +4,30 @@ import type { RootState } from "./store";
 
 
 export interface Project {
-  name: string;
-  _id: string;
+  projectId: string;
   title: string;
-  client: string;
-  category: "electrical" | "plumbing" | "hvac" | "mixed";
-  location: string;
-  completedDate: string;
-  duration: string;
-  budget: number;
-  teamSize: number;
-  status: "completed" | "featured";
   description: string;
-  images: string[];
-  videoUrl?: string;
-  services: string[];
-  awards?: string[];
-  testimonial?: {
-    text: string;
-    author: string;
-    position: string;
-  };
+  client: string;
+  location: string;
+  projectType: "electrical" | "plumbing" | "hvac" | "firefighting" | "automation" | "mixed";
+  status: "completed" | "ongoing" | "upcoming";
+  startDate: string;
+  endDate?: string;
+  projectValue: number;
+  duration: string;
+  scope: string[];
   features: string[];
-  stats: {
-    area: string;
-    systems: number;
-    efficiency: string;
-  };
+  technologies: string[];
+  images: {
+    url: string;
+    caption: string;
+    isPrimary: boolean;
+  }[];
+  teamSize: number;
+  isFeatured: boolean;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface PortfolioState {
@@ -47,8 +44,8 @@ const initialState: PortfolioState = {
 
 // Thunk to fetch projects
 export const fetchProjects = createAsyncThunk("portfolio/fetchProjects", async () => {
-  const response = await axios.get("http://localhost:5001/api/portfolio/projects");
-  return response.data as Project[];
+  const response = await axios.get("http://localhost:5001/api/portfolio");
+  return response.data.projects as Project[];
 });
 
 
