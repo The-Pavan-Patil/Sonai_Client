@@ -1,4 +1,4 @@
-// components/AdminDashboard.tsx
+// Pages/AdminDashboard.tsx - Fixed version
 import { useEffect, useState } from "react";
 import {
   Users,
@@ -15,13 +15,15 @@ import {
   X,
   MapPin,
   Calculator,
-  LogOut,
+  LogOut
 } from "lucide-react";
 import axios from "axios";
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { useAuth } from "../context/AuthContext";
+import { LoaderOne } from "../components/loader";
 
+// Define all interfaces
 interface Attendance {
   _id: string;
   labourId: string;
@@ -36,18 +38,7 @@ interface Attendance {
   advanceReason?: string;
   advanceDate?: string;
 }
-interface AdvancePayment {
-  _id: string;
-  advanceId: string;
-  labourId: string;
-  siteId: string;
-  amount: number;
-  reason: string;
-  description: string;
-  dateGiven: string;
-  status: "pending" | "deducted" | "cancelled";
-  approvedBy: string;
-}
+
 interface Labour {
   labourId: string;
   name: string;
@@ -82,10 +73,10 @@ interface PayrollData {
   attendanceRate: number;
   baseSalary: number;
   overtimePay: number;
-  grossSalary: number; // NEW: Before deductions
-  totalAdvanceAmount: number; // NEW: Total advances
-  netSalary: number; // NEW: After deductions
-  totalSalary: number; // Keep for compatibility
+  grossSalary: number;
+  totalAdvanceAmount: number;
+  netSalary: number;
+  totalSalary: number;
   period: string;
   startDate: string;
   endDate: string;
@@ -114,6 +105,14 @@ interface EditingLabour {
   };
 }
 
+interface Site {
+  siteId: string;
+  name: string;
+  address: string;
+  location: string;
+  isActive: boolean;
+}
+
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState("overview");
@@ -123,7 +122,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(false);
   const [showAddLabour, setShowAddLabour] = useState(false);
   const [showAttendance, setShowAttendance] = useState(false);
-  const [attendanceLoading, setAttendanceLoading] = useState(false);
+  const [attendanceLoading, setAttendanceLoading] = useState(false); // Fixed: Added missing state
   const [payrollData, setPayrollData] = useState<PayrollData[]>([]);
   const [payrollLoading, setPayrollLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState<string>("");
@@ -131,7 +130,7 @@ export default function AdminDashboard() {
   const [showViewModal, setShowViewModal] = useState<boolean>(false);
   const [showEditModal, setShowEditModal] = useState<boolean>(false);
   const [selectedLabourForView, setSelectedLabourForView] =
-    useState<Labour | null>(null);
+    useState<Labour | null>(null); // Fixed: Added missing state
   const [editingLabour, setEditingLabour] = useState<EditingLabour | null>(
     null
   );
@@ -144,13 +143,9 @@ export default function AdminDashboard() {
   const [showAddSite, setShowAddSite] = useState(false);
   const [showViewSite, setShowViewSite] = useState(false);
   const [showEditSite, setShowEditSite] = useState(false);
-  const [selectedSiteForView, setSelectedSiteForView] = useState<{
-    siteId: string;
-    name: string;
-    address: string;
-    location: string;
-    isActive: boolean;
-  } | null>(null);
+  const [selectedSiteForView, setSelectedSiteForView] = useState<Site | null>(
+    null
+  );
   const [editingSite, setEditingSite] = useState<{
     siteId: string;
     name: string;
@@ -166,12 +161,28 @@ export default function AdminDashboard() {
     checkOut: "",
     status: "present",
     notes: "",
-    // NEW: Advance payment fields
     advanceAmount: 0,
     advanceReason: "",
   });
+  const [sites, setSites] = useState<Site[]>([]);
+  const [siteFilter, setSiteFilter] = useState<string>("");
+  const [monthFilter, setMonthFilter] = useState<string>("");
+  const [newSite, setNewSite] = useState({
+    name: "",
+    location: "",
+    address: "",
+  });
+  const [newLabour, setNewLabour] = useState({
+    name: "",
+    phone: "",
+    category: "helper",
+    hourlyRate: 0,
+    address: "",
+    emergencyContact: { name: "", phone: "" },
+    site: "",
+  });
 
-  // Search and filter function
+  // Filter functions
   const filteredLabours = labours.filter((labour) => {
     const matchesSearch =
       labour.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -183,12 +194,71 @@ export default function AdminDashboard() {
 
     return matchesSearch && matchesCategory;
   });
-  // Add new site form state
-  const [newSite, setNewSite] = useState({
-    name: "",
-    location: "",
-    address: "",
+
+  const filteredSites = sites.filter((site) => {
+    const matchesSearch =
+      site.name.toLowerCase().includes(siteSearchTerm.toLowerCase()) ||
+      site.siteId.toLowerCase().includes(siteSearchTerm.toLowerCase()) ||
+      (site.location &&
+        site.location.toLowerCase().includes(siteSearchTerm.toLowerCase()));
+
+    return matchesSearch;
   });
+
+  // Fetch functions
+  const fetchLabours = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get("http://localhost:5001/api/labour");
+      setLabours(response.data.labours || []);
+    } catch (error) {
+      console.error("Error fetching labours:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchSites = async () => {
+    try {
+      const response = await axios.get("http://localhost:5001/api/sites");
+      setSites(response.data.sites || []);
+    } catch (error) {
+      console.error("Error fetching sites:", error);
+    }
+  };
+
+  const fetchAttendance = async (labourId: string, monthYear?: string) => {
+    try {
+      setAttendanceLoading(true);
+      console.log(
+        "Fetching attendance for:",
+        labourId,
+        "with month filter:",
+        monthYear
+      );
+
+      let url = `http://localhost:5001/api/attendance/labour/${labourId}`;
+      if (monthYear) {
+        const [year, month] = monthYear.split("-");
+        url += `?year=${parseInt(year)}&month=${parseInt(month)}`;
+      }
+
+      if (siteFilter) {
+        url += monthYear ? `&siteId=${siteFilter}` : `?siteId=${siteFilter}`;
+      }
+
+      const response = await axios.get(url);
+      console.log("Attendance response:", response.data);
+
+      setAttendance(response.data.attendance || []);
+    } catch (error) {
+      console.error("Error fetching attendance:", error);
+      setAttendance([]);
+    } finally {
+      setAttendanceLoading(false);
+    }
+  };
+
   // Site management functions
   const handleAddSite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -207,24 +277,13 @@ export default function AdminDashboard() {
       alert("Error creating site. Please try again.");
     }
   };
-  const handleViewSite = (site: {
-    siteId: string;
-    name: string;
-    address: string;
-    location: string;
-    isActive: boolean;
-  }) => {
+
+  const handleViewSite = (site: Site) => {
     setSelectedSiteForView(site);
     setShowViewSite(true);
   };
 
-  const handleEditSite = (site: {
-    siteId: string;
-    name: string;
-    location: string;
-    address: string;
-    isActive: boolean;
-  }) => {
+  const handleEditSite = (site: Site) => {
     setEditingSite({ ...site });
     setShowEditSite(true);
   };
@@ -248,13 +307,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleDeleteSite = async (site: {
-    siteId: string;
-    name: string;
-    address: string;
-    location: string;
-    isActive: boolean;
-  }) => {
+  const handleDeleteSite = async (site: Site) => {
     if (
       window.confirm(
         `Are you sure you want to delete ${site.name}? This action cannot be undone.`
@@ -271,36 +324,12 @@ export default function AdminDashboard() {
     }
   };
 
-  // New state for sites
-  const [sites, setSites] = useState<
-    Array<{
-      siteId: string;
-      name: string;
-      address: string;
-      location: string;
-      isActive: boolean;
-    }>
-  >([]);
-  const [siteFilter, setSiteFilter] = useState<string>("");
-
-  // Filter sites
-  const filteredSites = sites.filter((site) => {
-    const matchesSearch =
-      site.name.toLowerCase().includes(siteSearchTerm.toLowerCase()) ||
-      site.siteId.toLowerCase().includes(siteSearchTerm.toLowerCase()) ||
-      (site.location &&
-        site.location.toLowerCase().includes(siteSearchTerm.toLowerCase()));
-
-    return matchesSearch;
-  });
-
-  // View labour function
+  // Labour management functions
   const handleViewLabour = (labour: Labour) => {
     setSelectedLabourForView(labour);
     setShowViewModal(true);
   };
 
-  // Edit labour function
   const handleEditLabour = (labour: Labour) => {
     setEditingLabour({
       labourId: labour.labourId,
@@ -317,7 +346,6 @@ export default function AdminDashboard() {
     setShowEditModal(true);
   };
 
-  // Update labour function
   const handleUpdateLabour = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingLabour) return;
@@ -337,7 +365,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // Delete labour function
   const handleDeleteLabour = async (labour: Labour) => {
     if (
       window.confirm(
@@ -357,7 +384,82 @@ export default function AdminDashboard() {
     }
   };
 
-  // Add this function to calculate payroll
+  const handleAddLabour = async (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log("Sending data:", newLabour);
+    try {
+      const response = await axios.post(
+        "http://localhost:5001/api/labour",
+        newLabour
+      );
+      console.log("Response:", response.data);
+      setShowAddLabour(false);
+      setNewLabour({
+        name: "",
+        phone: "",
+        category: "helper",
+        hourlyRate: 0,
+        address: "",
+        emergencyContact: { name: "", phone: "" },
+        site: "",
+      });
+      fetchLabours();
+      alert("Labour added successfully!");
+    } catch (error) {
+      console.error("Error adding labour:", error);
+      alert("Error adding labour. Please try again.");
+    }
+  };
+
+  const handleMarkAttendance = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!attendanceForm.labourId) {
+      alert("Please select a labour");
+      return;
+    }
+
+    if (!attendanceForm.date) {
+      alert("Please select a date");
+      return;
+    }
+
+    if (!attendanceForm.checkIn) {
+      alert("Please enter check-in time");
+      return;
+    }
+
+    try {
+      console.log("Sending attendance data:", attendanceForm);
+
+      await axios.post("http://localhost:5001/api/attendance", attendanceForm);
+
+      setShowAttendance(false);
+      // Reset form
+      setAttendanceForm({
+        labourId: "",
+        siteId: "",
+        date: new Date().toISOString().split("T")[0],
+        checkIn: "",
+        checkOut: "",
+        status: "present",
+        notes: "",
+        advanceAmount: 0,
+        advanceReason: "",
+      });
+
+      // Refresh attendance if we're currently viewing this labour's records
+      if (selectedLabour === attendanceForm.labourId) {
+        fetchAttendance(selectedLabour);
+      }
+
+      alert("Attendance marked successfully!");
+    } catch (error) {
+      console.error("Error marking attendance:", error);
+    }
+  };
+
+  // Payroll functions
   const calculatePayroll = async () => {
     try {
       setPayrollLoading(true);
@@ -379,7 +481,7 @@ export default function AdminDashboard() {
       setPayrollLoading(false);
     }
   };
-  // Add this function to export to Excel
+
   const exportToExcel = () => {
     if (payrollData.length === 0) {
       alert("No payroll data to export. Please calculate payroll first.");
@@ -446,80 +548,11 @@ export default function AdminDashboard() {
     saveAs(data, fileName);
   };
 
-  // New Labour Form State
-  const [newLabour, setNewLabour] = useState({
-    name: "",
-    phone: "",
-    category: "helper",
-    hourlyRate: 0,
-    address: "",
-    emergencyContact: { name: "", phone: "" },
-    site: "",
-  });
-
-  // Attendance Form State
-
+  // Effects
   useEffect(() => {
     fetchLabours();
     fetchSites();
   }, []);
-
-  const fetchLabours = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get("http://localhost:5001/api/labour");
-      setLabours(response.data.labours || []);
-    } catch (error) {
-      console.error("Error fetching labours:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchSites = async () => {
-    try {
-      const response = await axios.get("http://localhost:5001/api/sites");
-      setSites(response.data.sites || []);
-    } catch (error) {
-      console.error("Error fetching sites:", error);
-    }
-  };
-
-  const [monthFilter, setMonthFilter] = useState<string>("");
-
-  const fetchAttendance = async (labourId: string, monthYear?: string) => {
-    try {
-      setAttendanceLoading(true);
-      console.log(
-        "Fetching attendance for:",
-        labourId,
-        "with month filter:",
-        monthYear
-      ); // Debug log
-
-      let url = `http://localhost:5001/api/attendance/labour/${labourId}`;
-      if (monthYear) {
-        const [year, month] = monthYear.split("-");
-        // Fix: pass year and month as query params, month as number
-        url += `?year=${parseInt(year)}&month=${parseInt(month)}`;
-      }
-
-      // Add site filter if set
-      if (siteFilter) {
-        url += monthYear ? `&siteId=${siteFilter}` : `?siteId=${siteFilter}`;
-      }
-
-      const response = await axios.get(url);
-      console.log("Attendance response:", response.data); // Debug log
-
-      setAttendance(response.data.attendance || []);
-    } catch (error) {
-      console.error("Error fetching attendance:", error);
-      setAttendance([]);
-    } finally {
-      setAttendanceLoading(false);
-    }
-  };
 
   useEffect(() => {
     if (selectedLabour) {
@@ -529,81 +562,14 @@ export default function AdminDashboard() {
     }
   }, [selectedLabour, siteFilter, monthFilter]);
 
-  const handleAddLabour = async (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log("Sending data:", newLabour);
-    try {
-      const response = await axios.post(
-        "http://localhost:5001/api/labour",
-        newLabour
-      );
-      console.log("Response:", response.data);
-      setShowAddLabour(false);
-      setNewLabour({
-        name: "",
-        phone: "",
-        category: "helper",
-        hourlyRate: 0,
-        address: "",
-        emergencyContact: { name: "", phone: "" },
-        site: "",
-      });
-      fetchLabours();
-      alert("Labour added successfully!");
-    } catch (error) {
-      console.error("Error adding labour:", error);
-      alert("Error adding labour. Please try again.");
-    }
-  };
 
-  const handleMarkAttendance = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!attendanceForm.labourId) {
-      alert("Please select a labour");
-      return;
-    }
-
-    if (!attendanceForm.date) {
-      alert("Please select a date");
-      return;
-    }
-
-    if (!attendanceForm.checkIn) {
-      alert("Please enter check-in time");
-      return;
-    }
-
-    try {
-      console.log("Sending attendance data:", attendanceForm);
-
-      await axios.post("http://localhost:5001/api/attendance", attendanceForm);
-
-      setShowAttendance(false);
-
-      // Reset form
-      setAttendanceForm({
-        labourId: "",
-        siteId: "",
-        date: new Date().toISOString().split("T")[0],
-        checkIn: "",
-        checkOut: "",
-        status: "present",
-        notes: "",
-        advanceAmount: 0,
-        advanceReason: "",
-      });
-
-      // Refresh attendance if we're currently viewing this labour's records
-      if (selectedLabour === attendanceForm.labourId) {
-        fetchAttendance(selectedLabour);
-      }
-
-      alert("Attendance marked successfully!");
-    } catch (error) {
-      console.error("Error marking attendance:", error);
-    }
-  };
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-96 gap-4">
+        <LoaderOne />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -611,13 +577,17 @@ export default function AdminDashboard() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-          <p className="text-gray-600">Welcome back, {user?.username}!</p>
+          <p className="text-gray-600">
+            Welcome back, {user?.username || "Guest"}!
+          </p>
         </div>
 
         <div className="flex items-center gap-4">
           <div className="text-right">
             <p className="text-sm text-gray-600">Logged in as</p>
-            <p className="font-medium text-gray-900">{user?.username}</p>
+            <p className="font-medium text-gray-900">
+              {user?.username || "Guest"}
+            </p>
           </div>
 
           <button
@@ -633,6 +603,7 @@ export default function AdminDashboard() {
           </button>
         </div>
       </div>
+
       {/* Navigation Tabs */}
       <div className="bg-white rounded-xl shadow-sm border mb-8">
         <div className="flex overflow-x-auto">
@@ -658,6 +629,7 @@ export default function AdminDashboard() {
           ))}
         </div>
       </div>
+
       {/* Overview Tab */}
       {activeTab === "overview" && (
         <div className="space-y-8">
@@ -709,6 +681,7 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+
       {/* Site Management Tab */}
       {activeTab === "sites" && (
         <div className="space-y-6">
@@ -990,6 +963,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
+      {/* Labour Management Tab */}
       {activeTab === "labours" && (
         <div className="bg-white rounded-xl shadow-sm border">
           <div className="p-6">
@@ -1179,6 +1153,636 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+
+      {/* Attendance Tab */}
+      {activeTab === "attendance" && (
+        <div className="space-y-6">
+          {/* Attendance Filters */}
+          <div className="bg-white rounded-xl shadow-sm border p-6">
+            <div className="flex flex-col lg:flex-row gap-4">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Select Labour
+                </label>
+                <select
+                  value={selectedLabour}
+                  onChange={(e) => setSelectedLabour(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">Select Labour to View Attendance</option>
+                  {labours
+                    .filter((l) => l.isActive)
+                    .filter((l) =>
+                      siteFilter ? l.site?.siteId === siteFilter : true
+                    )
+                    .map((labour) => (
+                      <option key={labour.labourId} value={labour.labourId}>
+                        {labour.labourId} - {labour.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              <div className="lg:w-48">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Site Filter
+                </label>
+                <select
+                  value={siteFilter}
+                  onChange={(e) => {
+                    setSiteFilter(e.target.value);
+                    setSelectedLabour(""); // Reset selected labour when site changes
+                    setAttendance([]); // Clear attendance on site change
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">All Sites</option>
+                  {sites.map((site) => (
+                    <option key={site.siteId} value={site.siteId}>
+                      {site.siteId} - {site.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="lg:w-48">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Month Filter
+                </label>
+                <select
+                  value={monthFilter}
+                  onChange={(e) => setMonthFilter(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">All Time</option>
+                  <option value="2024-09">September 2024</option>
+                  <option value="2024-10">October 2024</option>
+                  <option value="2024-11">November 2024</option>
+                </select>
+              </div>
+              <div className="lg:w-32 flex">
+                <button
+                  className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                  onClick={() => setShowAttendance(true)}
+                >
+                  Mark Attendance
+                </button>
+              </div>
+
+              <div className="lg:w-32 flex ">
+                <button
+                  onClick={() =>
+                    selectedLabour &&
+                    fetchAttendance(selectedLabour, monthFilter)
+                  }
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                >
+                  Refresh
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Attendance Records */}
+          {selectedLabour ? (
+            <div className="bg-white rounded-xl shadow-sm border">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Attendance Records -{" "}
+                    {labours.find((l) => l.labourId === selectedLabour)?.name}
+                  </h3>
+                  <span className="text-sm text-gray-600">
+                    Total Records: {attendance.length}
+                  </span>
+                </div>
+
+                {attendanceLoading ? (
+                  <div className="text-center py-8">
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <p className="mt-2 text-gray-600">Loading attendance...</p>
+                  </div>
+                ) : attendance.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-gray-200">
+                          <th className="text-left py-3 px-4 font-medium text-gray-900">
+                            Date
+                          </th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-900">
+                            Check In
+                          </th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-900">
+                            Check Out
+                          </th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-900">
+                            Total Hours
+                          </th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-900">
+                            Overtime
+                          </th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-900">
+                            Status
+                          </th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-900">
+                            Notes
+                          </th>
+                          <th className="text-left py-4 px-6 font-semibold text-gray-900">
+                            Advances
+                          </th>
+                          <th className="text-left py-3 px-4 font-medium text-gray-900">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {attendance.map((record) => (
+                          <tr
+                            key={record._id}
+                            className="border-b border-gray-100 hover:bg-gray-50"
+                          >
+                            <td className="py-3 px-4 font-medium">
+                              {new Date(record.date).toLocaleDateString()}
+                            </td>
+                            <td className="py-3 px-4">{record.checkIn}</td>
+                            <td className="py-3 px-4">
+                              {record.checkOut || "-"}
+                            </td>
+                            <td className="py-3 px-4">
+                              {record.totalHours.toFixed(2)}h
+                            </td>
+                            <td className="py-3 px-4">
+                              {record.overtime > 0
+                                ? `${record.overtime.toFixed(2)}h`
+                                : "-"}
+                            </td>
+                            <td className="py-3 px-4">
+                              <span
+                                className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  record.status === "present"
+                                    ? "bg-green-100 text-green-800"
+                                    : record.status === "absent"
+                                    ? "bg-red-100 text-red-800"
+                                    : record.status === "half-day"
+                                    ? "bg-yellow-100 text-yellow-800"
+                                    : "bg-purple-100 text-purple-800"
+                                }`}
+                              >
+                                {record.status.charAt(0).toUpperCase() +
+                                  record.status.slice(1)}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 max-w-32 truncate">
+                              {record.notes || "-"}
+                            </td>
+                            <td className="py-3 px-4 truncate">
+                              {record.advanceAmount || 0}
+                            </td>
+                            <td className="py-3 px-4">
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => {}}
+                                  className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => {}}
+                                  className="p-1 text-red-600 hover:bg-red-50 rounded"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <Clock className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                      No Attendance Records
+                    </h3>
+                    <p className="text-gray-600">
+                      No attendance records found for this labour.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl shadow-sm border p-12 text-center">
+              <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Select a Labour
+              </h3>
+              <p className="text-gray-600">
+                Choose a labour from the dropdown above to view their attendance
+                records.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Payroll Tab */}
+      {activeTab === "payroll" && (
+        <div className="space-y-6">
+          {/* Simple Payroll Generator */}
+          <div className="bg-white rounded-xl shadow-sm border p-8">
+            <div className="text-center mb-8">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                Generate Payroll Report
+              </h2>
+              <p className="text-gray-600">
+                Calculate salaries for all labours with just a few clicks
+              </p>
+            </div>
+
+            {/* Simple Form */}
+            <div className="max-w-2xl mx-auto">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                {/* Month Selection */}
+                <div className="bg-gray-50 p-6 rounded-lg">
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">
+                    Select Month & Year
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <select
+                      value={payrollForm.month}
+                      onChange={(e) =>
+                        setPayrollForm({
+                          ...payrollForm,
+                          month: parseInt(e.target.value),
+                        })
+                      }
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    >
+                      {Array.from({ length: 12 }, (_, i) => (
+                        <option key={i} value={i + 1}>
+                          {new Date(2024, i).toLocaleString("default", {
+                            month: "long",
+                          })}
+                        </option>
+                      ))}
+                    </select>
+
+                    <select
+                      value={payrollForm.year}
+                      onChange={(e) =>
+                        setPayrollForm({
+                          ...payrollForm,
+                          year: parseInt(e.target.value),
+                        })
+                      }
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                    >
+                      <option value={2024}>2024</option>
+                      <option value={2025}>2025</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Overtime Rate */}
+                <div className="bg-gray-50 p-6 rounded-lg">
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">
+                    Overtime Rate Multiplier
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="1"
+                      max="5"
+                      value={payrollForm.overtimeRate}
+                      onChange={(e) =>
+                        setPayrollForm({
+                          ...payrollForm,
+                          overtimeRate: parseFloat(e.target.value) || 1.5,
+                        })
+                      }
+                      className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center font-medium"
+                      placeholder="1.5"
+                    />
+                    <span className="text-gray-700 font-medium">
+                      x regular rate
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <button
+                  onClick={calculatePayroll}
+                  disabled={payrollLoading}
+                  className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-all duration-200 flex items-center justify-center gap-3"
+                >
+                  {payrollLoading ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Calculating Payroll...
+                    </>
+                  ) : (
+                    <>
+                      <DollarSign className="w-5 h-5" />
+                      Calculate All Salaries
+                    </>
+                  )}
+                </button>
+
+                {payrollData.length > 0 && (
+                  <button
+                    onClick={exportToExcel}
+                    className="bg-green-600 hover:bg-green-700 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-all duration-200 flex items-center justify-center gap-3"
+                  >
+                    <FileText className="w-5 h-5" />
+                    Download Excel Report
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Summary Cards */}
+          {payrollData.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+              <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-6 rounded-xl text-white">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-blue-100 text-sm font-medium">
+                      Total Labours
+                    </p>
+                    <p className="text-3xl font-bold">{payrollData.length}</p>
+                  </div>
+                  <Users className="w-8 h-8 text-blue-200" />
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-r from-green-500 to-green-600 p-6 rounded-xl text-white">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-green-100 text-sm font-medium">
+                      Total Payout
+                    </p>
+                    <p className="text-3xl font-bold">
+                      ₹
+                      {(
+                        payrollData.reduce((sum, s) => sum + s.totalSalary, 0) /
+                        100000
+                      ).toFixed(1)}
+                      L
+                    </p>
+                  </div>
+                  <DollarSign className="w-8 h-8 text-green-200" />
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-6 rounded-xl text-white">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-purple-100 text-sm font-medium">
+                      Total Hours
+                    </p>
+                    <p className="text-3xl font-bold">
+                      {Math.round(
+                        payrollData.reduce((sum, s) => sum + s.totalHours, 0)
+                      )}
+                    </p>
+                  </div>
+                  <Clock className="w-8 h-8 text-purple-200" />
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-6 rounded-xl text-white">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-orange-100 text-sm font-medium">
+                      Overtime Hours
+                    </p>
+                    <p className="text-3xl font-bold">
+                      {Math.round(
+                        payrollData.reduce((sum, s) => sum + s.overtimeHours, 0)
+                      )}
+                    </p>
+                  </div>
+                  <TrendingUp className="w-8 h-8 text-orange-200" />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Simple Results Table */}
+          {payrollData.length > 0 ? (
+            <div className="bg-white rounded-xl shadow-sm border">
+              <div className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl font-bold text-gray-900">
+                    Payroll for{" "}
+                    {new Date(
+                      payrollForm.year,
+                      payrollForm.month - 1
+                    ).toLocaleString("default", {
+                      month: "long",
+                      year: "numeric",
+                    })}
+                  </h3>
+                  <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+                    {payrollData.length} Labours
+                  </span>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-gray-50 border-b-2 border-gray-200">
+                        <th className="text-left py-4 px-6 font-semibold text-gray-900">
+                          Labour Details
+                        </th>
+                        <th className="text-left py-4 px-6 font-semibold text-gray-900">
+                          Site
+                        </th>
+                        <th className="text-left py-4 px-6 font-semibold text-gray-900">
+                          Work Summary
+                        </th>
+                        <th className="text-left py-4 px-6 font-semibold text-gray-900">
+                          Salary Breakdown
+                        </th>
+                        <th className="text-left py-4 px-6 font-semibold text-gray-900">
+                          Advances
+                        </th>
+                        <th className="text-right py-4 px-6 font-semibold text-gray-900">
+                          Net Salary
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {payrollData.map((labour) => (
+                        <tr
+                          key={labour.labourId}
+                          className="border-b border-gray-100 hover:bg-gray-50"
+                        >
+                          {/* Labour Details */}
+                          <td className="py-4 px-6">
+                            <div>
+                              <p className="font-semibold text-gray-900">
+                                {labour.name}
+                              </p>
+                              <p className="text-sm text-gray-600">
+                                {labour.labourId}
+                              </p>
+                              <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full mt-1">
+                                {labour.category}
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* Site Column */}
+                          <td className="py-4 px-6">
+                            <div>
+                              <p className="font-medium text-gray-900">
+                                {sites.find((s) => s.siteId === labour.siteId)
+                                  ?.name || "Unknown Site"}
+                              </p>
+                              <p className="text-sm text-gray-600">
+                                {
+                                  sites.find((s) => s.siteId === labour.siteId)
+                                    ?.location
+                                }
+                              </p>
+                            </div>
+                          </td>
+
+                          {/* Work Summary */}
+                          <td className="py-4 px-6">
+                            <div className="text-sm space-y-1">
+                              <p>
+                                <span className="font-medium">Days:</span>{" "}
+                                {labour.presentDays}/{labour.workingDays}
+                              </p>
+                              <p>
+                                <span className="font-medium">Hours:</span>{" "}
+                                {labour.totalHours.toFixed(1)}h
+                              </p>
+                              <p>
+                                <span className="font-medium">OT:</span>{" "}
+                                {labour.overtimeHours.toFixed(1)}h
+                              </p>
+                              <p>
+                                <span className="font-medium">Rate:</span> ₹
+                                {labour.hourlyRate}/h
+                              </p>
+                            </div>
+                          </td>
+
+                          {/* Salary Breakdown */}
+                          <td className="py-4 px-6">
+                            <div className="text-sm space-y-1">
+                              <p>
+                                <span className="font-medium">Base:</span> ₹
+                                {labour.baseSalary.toLocaleString()}
+                              </p>
+                              <p>
+                                <span className="font-medium">Overtime:</span> ₹
+                                {labour.overtimePay.toLocaleString()}
+                              </p>
+                              <div className="pt-1 border-t border-gray-200">
+                                <p className="font-medium text-green-600">
+                                  Gross: ₹{labour.grossSalary.toLocaleString()}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* NEW: Advances Column */}
+                          <td className="py-4 px-6">
+                            {labour.totalAdvanceAmount > 0 ? (
+                              <div className="text-sm">
+                                <p className="font-medium text-red-600">
+                                  -₹{labour.totalAdvanceAmount.toLocaleString()}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {labour.advances?.length || 0} advance(s)
+                                </p>
+                                {labour.advances &&
+                                  labour.advances.length > 0 && (
+                                    <div className="mt-1">
+                                      <button
+                                        onClick={() => {
+                                          /* Show advance details */
+                                        }}
+                                        className="text-xs text-blue-600 hover:text-blue-800"
+                                      >
+                                        View Details
+                                      </button>
+                                    </div>
+                                  )}
+                              </div>
+                            ) : (
+                              <span className="text-sm text-gray-400">
+                                No advances
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Net Salary */}
+                          <td className="py-4 px-6 text-right">
+                            <div>
+                              <p className="text-2xl font-bold text-green-600">
+                                ₹{labour.netSalary.toLocaleString()}
+                              </p>
+                              {labour.totalAdvanceAmount > 0 && (
+                                <p className="text-xs text-gray-500">
+                                  After advances
+                                </p>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          ) : (
+            !payrollLoading && (
+              /* Empty State */
+              <div className="bg-white rounded-xl shadow-sm border p-16 text-center">
+                <div className="max-w-md mx-auto">
+                  <DollarSign className="w-16 h-16 text-gray-400 mx-auto mb-6" />
+                  <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                    Ready to Calculate Payroll
+                  </h3>
+                  <p className="text-gray-600 mb-6">
+                    Select the month and year above, then click "Calculate All
+                    Salaries" to generate payroll for all your labours
+                    automatically.
+                  </p>
+                  <div className="bg-blue-50 p-4 rounded-lg">
+                    <p className="text-sm text-blue-700">
+                      <strong>What we calculate:</strong>
+                      <br />
+                      • Regular hours + overtime hours
+                      <br />
+                      • Base salary + overtime pay
+                      <br />
+                      • Attendance rates
+                      <br />• Excel export ready
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )
+          )}
+        </div>
+      )}
+
+      {/* ALL MODALS */}
+
       {/* Add Labour Modal */}
       {showAddLabour && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -1226,7 +1830,10 @@ export default function AdminDashboard() {
                   <select
                     value={newLabour.category}
                     onChange={(e) =>
-                      setNewLabour({ ...newLabour, category: e.target.value })
+                      setNewLabour({
+                        ...newLabour,
+                        category: e.target.value as Labour["category"],
+                      })
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
@@ -1298,6 +1905,7 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+
       {/* Mark Attendance Modal */}
       {showAttendance && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -1489,634 +2097,8 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
-      {/* Attendance Tab */}
-      {activeTab === "attendance" && (
-        <div className="space-y-6">
-          {/* Attendance Filters */}
-          <div className="bg-white rounded-xl shadow-sm border p-6">
-            <div className="flex flex-col lg:flex-row gap-4">
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Select Labour
-                </label>
-                <select
-                  value={selectedLabour}
-                  onChange={(e) => setSelectedLabour(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">Select Labour to View Attendance</option>
-                  {labours
-                    .filter((l) => l.isActive)
-                    .filter((l) =>
-                      siteFilter ? l.site?.siteId === siteFilter : true
-                    )
-                    .map((labour) => (
-                      <option key={labour.labourId} value={labour.labourId}>
-                        {labour.labourId} - {labour.name}
-                      </option>
-                    ))}
-                </select>
-              </div>
 
-              <div className="lg:w-48">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Site Filter
-                </label>
-                <select
-                  value={siteFilter}
-                  onChange={(e) => {
-                    setSiteFilter(e.target.value);
-                    setSelectedLabour(""); // Reset selected labour when site changes
-                    setAttendance([]); // Clear attendance on site change
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">All Sites</option>
-                  {sites.map((site) => (
-                    <option key={site.siteId} value={site.siteId}>
-                      {site.siteId} - {site.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="lg:w-48">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Month Filter
-                </label>
-                <select
-                  value={monthFilter}
-                  onChange={(e) => setMonthFilter(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">All Time</option>
-                  <option value="2024-09">September 2024</option>
-                  <option value="2024-10">October 2024</option>
-                  <option value="2024-11">November 2024</option>
-                </select>
-              </div>
-              <div className="lg:w-32 flex">
-                <button
-                  className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-                  onClick={() => setShowAttendance(true)}
-                >
-                  Mark Attendance
-                </button>
-              </div>
-
-              <div className="lg:w-32 flex ">
-                <button
-                  onClick={() =>
-                    selectedLabour &&
-                    fetchAttendance(selectedLabour, monthFilter)
-                  }
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-                >
-                  Refresh
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Attendance Records */}
-          {selectedLabour ? (
-            <div className="bg-white rounded-xl shadow-sm border">
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    Attendance Records -{" "}
-                    {labours.find((l) => l.labourId === selectedLabour)?.name}
-                  </h3>
-                  <span className="text-sm text-gray-600">
-                    Total Records: {attendance.length}
-                  </span>
-                </div>
-
-                {loading ? (
-                  <div className="text-center py-8">
-                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                    <p className="mt-2 text-gray-600">Loading attendance...</p>
-                  </div>
-                ) : attendance.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b border-gray-200">
-                          <th className="text-left py-3 px-4 font-medium text-gray-900">
-                            Date
-                          </th>
-                          <th className="text-left py-3 px-4 font-medium text-gray-900">
-                            Check In
-                          </th>
-                          <th className="text-left py-3 px-4 font-medium text-gray-900">
-                            Check Out
-                          </th>
-                          <th className="text-left py-3 px-4 font-medium text-gray-900">
-                            Total Hours
-                          </th>
-                          <th className="text-left py-3 px-4 font-medium text-gray-900">
-                            Overtime
-                          </th>
-                          <th className="text-left py-3 px-4 font-medium text-gray-900">
-                            Status
-                          </th>
-                          <th className="text-left py-3 px-4 font-medium text-gray-900">
-                            Notes
-                          </th>
-                          <th className="text-left py-4 px-6 font-semibold text-gray-900">
-                            Advances
-                          </th>
-                          <th className="text-left py-3 px-4 font-medium text-gray-900">
-                            Actions
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {attendance.map((record) => (
-                          <tr
-                            key={record._id}
-                            className="border-b border-gray-100 hover:bg-gray-50"
-                          >
-                            <td className="py-3 px-4 font-medium">
-                              {new Date(record.date).toLocaleDateString()}
-                            </td>
-                            <td className="py-3 px-4">{record.checkIn}</td>
-                            <td className="py-3 px-4">
-                              {record.checkOut || "-"}
-                            </td>
-                            <td className="py-3 px-4">
-                              {record.totalHours.toFixed(2)}h
-                            </td>
-                            <td className="py-3 px-4">
-                              {record.overtime > 0
-                                ? `${record.overtime.toFixed(2)}h`
-                                : "-"}
-                            </td>
-                            <td className="py-3 px-4">
-                              <span
-                                className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                  record.status === "present"
-                                    ? "bg-green-100 text-green-800"
-                                    : record.status === "absent"
-                                    ? "bg-red-100 text-red-800"
-                                    : record.status === "half-day"
-                                    ? "bg-yellow-100 text-yellow-800"
-                                    : "bg-purple-100 text-purple-800"
-                                }`}
-                              >
-                                {record.status.charAt(0).toUpperCase() +
-                                  record.status.slice(1)}
-                              </span>
-                            </td>
-                            <td className="py-3 px-4 max-w-32 truncate">
-                              {record.notes || "-"}
-                            </td>
-                            <th className="py-3 px-4 truncate">
-                              {record.advanceAmount}
-                            </th>
-                            <td className="py-3 px-4">
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={() => {}}
-                                  className="p-1 text-blue-600 hover:bg-blue-50 rounded"
-                                >
-                                  <Edit className="w-4 h-4" />
-                                </button>
-                                <button
-                                  onClick={() => {}}
-                                  className="p-1 text-red-600 hover:bg-red-50 rounded"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div className="text-center py-12">
-                    <Clock className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">
-                      No Attendance Records
-                    </h3>
-                    <p className="text-gray-600">
-                      No attendance records found for this labour.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="bg-white rounded-xl shadow-sm border p-12 text-center">
-              <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                Select a Labour
-              </h3>
-              <p className="text-gray-600">
-                Choose a labour from the dropdown above to view their attendance
-                records.
-              </p>
-            </div>
-          )}
-        </div>
-      )}
-      {/* Payroll Tab */}
-      {activeTab === "payroll" && (
-        <div className="space-y-6">
-          {/* Simple Payroll Generator */}
-          <div className="bg-white rounded-xl shadow-sm border p-8">
-            <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                Generate Payroll Report
-              </h2>
-              <p className="text-gray-600">
-                Calculate salaries for all labours with just a few clicks
-              </p>
-            </div>
-
-            {/* Simple Form */}
-            <div className="max-w-2xl mx-auto">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                {/* Month Selection */}
-                <div className="bg-gray-50 p-6 rounded-lg">
-                  <label className="block text-sm font-semibold text-gray-700 mb-3">
-                    Select Month & Year
-                  </label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <select
-                      value={payrollForm.month}
-                      onChange={(e) =>
-                        setPayrollForm({
-                          ...payrollForm,
-                          month: parseInt(e.target.value),
-                        })
-                      }
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                    >
-                      {Array.from({ length: 12 }, (_, i) => (
-                        <option key={i} value={i + 1}>
-                          {new Date(2024, i).toLocaleString("default", {
-                            month: "long",
-                          })}
-                        </option>
-                      ))}
-                    </select>
-
-                    <select
-                      value={payrollForm.year}
-                      onChange={(e) =>
-                        setPayrollForm({
-                          ...payrollForm,
-                          year: parseInt(e.target.value),
-                        })
-                      }
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                    >
-                      <option value={2024}>2024</option>
-                      <option value={2025}>2025</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Overtime Rate */}
-                <div className="bg-gray-50 p-6 rounded-lg">
-                  <label className="block text-sm font-semibold text-gray-700 mb-3">
-                    Overtime Rate Multiplier
-                  </label>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="number"
-                      step="0.1"
-                      min="1"
-                      max="5"
-                      value={payrollForm.overtimeRate}
-                      onChange={(e) =>
-                        setPayrollForm({
-                          ...payrollForm,
-                          overtimeRate: parseFloat(e.target.value) || 1.5,
-                        })
-                      }
-                      className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center font-medium"
-                      placeholder="1.5"
-                    />
-                    <span className="text-gray-700 font-medium">
-                      x regular rate
-                    </span>
-                  </div>
-
-                
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <button
-                  onClick={calculatePayroll}
-                  disabled={payrollLoading}
-                  className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-all duration-200 flex items-center justify-center gap-3"
-                >
-                  {payrollLoading ? (
-                    <>
-                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      Calculating Payroll...
-                    </>
-                  ) : (
-                    <>
-                      <DollarSign className="w-5 h-5" />
-                      Calculate All Salaries
-                    </>
-                  )}
-                </button>
-
-                {payrollData.length > 0 && (
-                  <button
-                    onClick={exportToExcel}
-                    className="bg-green-600 hover:bg-green-700 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-all duration-200 flex items-center justify-center gap-3"
-                  >
-                    <FileText className="w-5 h-5" />
-                    Download Excel Report
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Summary Cards */}
-          {payrollData.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
-              <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-6 rounded-xl text-white">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-blue-100 text-sm font-medium">
-                      Total Labours
-                    </p>
-                    <p className="text-3xl font-bold">{payrollData.length}</p>
-                  </div>
-                  <Users className="w-8 h-8 text-blue-200" />
-                </div>
-              </div>
-
-              <div className="bg-gradient-to-r from-green-500 to-green-600 p-6 rounded-xl text-white">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-green-100 text-sm font-medium">
-                      Total Payout
-                    </p>
-                    <p className="text-3xl font-bold">
-                      ₹
-                      {(
-                        payrollData.reduce((sum, s) => sum + s.totalSalary, 0) /
-                        100000
-                      ).toFixed(1)}
-                      L
-                    </p>
-                  </div>
-                  <DollarSign className="w-8 h-8 text-green-200" />
-                </div>
-              </div>
-
-              <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-6 rounded-xl text-white">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-purple-100 text-sm font-medium">
-                      Total Hours
-                    </p>
-                    <p className="text-3xl font-bold">
-                      {Math.round(
-                        payrollData.reduce((sum, s) => sum + s.totalHours, 0)
-                      )}
-                    </p>
-                  </div>
-                  <Clock className="w-8 h-8 text-purple-200" />
-                </div>
-              </div>
-
-              <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-6 rounded-xl text-white">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-orange-100 text-sm font-medium">
-                      Overtime Hours
-                    </p>
-                    <p className="text-3xl font-bold">
-                      {Math.round(
-                        payrollData.reduce((sum, s) => sum + s.overtimeHours, 0)
-                      )}
-                    </p>
-                  </div>
-                  <TrendingUp className="w-8 h-8 text-orange-200" />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Simple Results Table */}
-          {payrollData.length > 0 ? (
-            <div className="bg-white rounded-xl shadow-sm border">
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xl font-bold text-gray-900">
-                    Payroll for{" "}
-                    {new Date(
-                      payrollForm.year,
-                      payrollForm.month - 1
-                    ).toLocaleString("default", {
-                      month: "long",
-                      year: "numeric",
-                    })}
-                  </h3>
-                  <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
-                    {payrollData.length} Labours
-                  </span>
-                </div>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="bg-gray-50 border-b-2 border-gray-200">
-                        <th className="text-left py-4 px-6 font-semibold text-gray-900">
-                          Labour Details
-                        </th>
-                        <th className="text-left py-4 px-6 font-semibold text-gray-900">
-                          Site
-                        </th>
-                        <th className="text-left py-4 px-6 font-semibold text-gray-900">
-                          Work Summary
-                        </th>
-                        <th className="text-left py-4 px-6 font-semibold text-gray-900">
-                          Salary Breakdown
-                        </th>
-                        <th className="text-left py-4 px-6 font-semibold text-gray-900">
-                          Advances
-                        </th>{" "}
-                        {/* NEW */}
-                        <th className="text-right py-4 px-6 font-semibold text-gray-900">
-                          Net Salary
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {payrollData.map((labour) => (
-                        <tr
-                          key={labour.labourId}
-                          className="border-b border-gray-100 hover:bg-gray-50"
-                        >
-                          {/* Labour Details */}
-                          <td className="py-4 px-6">
-                            <div>
-                              <p className="font-semibold text-gray-900">
-                                {labour.name}
-                              </p>
-                              <p className="text-sm text-gray-600">
-                                {labour.labourId}
-                              </p>
-                              <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full mt-1">
-                                {labour.category}
-                              </span>
-                            </div>
-                          </td>
-
-                          {/* Site Column */}
-                          <td className="py-4 px-6">
-                            <div>
-                              <p className="font-medium text-gray-900">
-                                {sites.find((s) => s.siteId === labour.siteId)
-                                  ?.name || "Unknown Site"}
-                              </p>
-                              <p className="text-sm text-gray-600">
-                                {
-                                  sites.find((s) => s.siteId === labour.siteId)
-                                    ?.location
-                                }
-                              </p>
-                            </div>
-                          </td>
-
-                          {/* Work Summary */}
-                          <td className="py-4 px-6">
-                            <div className="text-sm space-y-1">
-                              <p>
-                                <span className="font-medium">Days:</span>{" "}
-                                {labour.presentDays}/{labour.workingDays}
-                              </p>
-                              <p>
-                                <span className="font-medium">Hours:</span>{" "}
-                                {labour.totalHours.toFixed(1)}h
-                              </p>
-                              <p>
-                                <span className="font-medium">OT:</span>{" "}
-                                {labour.overtimeHours.toFixed(1)}h
-                              </p>
-                              <p>
-                                <span className="font-medium">Rate:</span> ₹
-                                {labour.hourlyRate}/h
-                              </p>
-                            </div>
-                          </td>
-
-                          {/* Salary Breakdown */}
-                          <td className="py-4 px-6">
-                            <div className="text-sm space-y-1">
-                              <p>
-                                <span className="font-medium">Base:</span> ₹
-                                {labour.baseSalary.toLocaleString()}
-                              </p>
-                              <p>
-                                <span className="font-medium">Overtime:</span> ₹
-                                {labour.overtimePay.toLocaleString()}
-                              </p>
-                              <div className="pt-1 border-t border-gray-200">
-                                <p className="font-medium text-green-600">
-                                  Gross: ₹{labour.grossSalary.toLocaleString()}
-                                </p>
-                              </div>
-                            </div>
-                          </td>
-
-                          {/* NEW: Advances Column */}
-                          <td className="py-4 px-6">
-                            {labour.totalAdvanceAmount > 0 ? (
-                              <div className="text-sm">
-                                <p className="font-medium text-red-600">
-                                  -₹{labour.totalAdvanceAmount.toLocaleString()}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                  {labour.advances?.length || 0} advance(s)
-                                </p>
-                                {labour.advances &&
-                                  labour.advances.length > 0 && (
-                                    <div className="mt-1">
-                                      <button
-                                        onClick={() => {
-                                          /* Show advance details */
-                                        }}
-                                        className="text-xs text-blue-600 hover:text-blue-800"
-                                      >
-                                        View Details
-                                      </button>
-                                    </div>
-                                  )}
-                              </div>
-                            ) : (
-                              <span className="text-sm text-gray-400">
-                                No advances
-                              </span>
-                            )}
-                          </td>
-
-                          {/* Net Salary */}
-                          <td className="py-4 px-6 text-right">
-                            <div>
-                              <p className="text-2xl font-bold text-green-600">
-                                ₹{labour.netSalary.toLocaleString()}
-                              </p>
-                              {labour.totalAdvanceAmount > 0 && (
-                                <p className="text-xs text-gray-500">
-                                  After advances
-                                </p>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          ) : (
-            !payrollLoading && (
-              /* Empty State */
-              <div className="bg-white rounded-xl shadow-sm border p-16 text-center">
-                <div className="max-w-md mx-auto">
-                  <DollarSign className="w-16 h-16 text-gray-400 mx-auto mb-6" />
-                  <h3 className="text-xl font-semibold text-gray-900 mb-3">
-                    Ready to Calculate Payroll
-                  </h3>
-                  <p className="text-gray-600 mb-6">
-                    Select the month and year above, then click "Calculate All
-                    Salaries" to generate payroll for all your labours
-                    automatically.
-                  </p>
-                  <div className="bg-blue-50 p-4 rounded-lg">
-                    <p className="text-sm text-blue-700">
-                      <strong>What we calculate:</strong>
-                      <br />
-                      • Regular hours + overtime hours
-                      <br />
-                      • Base salary + overtime pay
-                      <br />
-                      • Attendance rates
-                      <br />• Excel export ready
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )
-          )}
-        </div>
-      )}
+      {/* Edit Labour Modal */}
       {showEditModal && editingLabour && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 max-h-96 overflow-y-auto">
@@ -2286,6 +2268,96 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+
+      {/* View Labour Modal */}
+      {showViewModal && selectedLabourForView && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full mx-4 max-h-96 overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-gray-900">
+                  Labour Details
+                </h3>
+                <button
+                  onClick={() => setShowViewModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {/* Labour Information */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Labour ID
+                    </label>
+                    <p className="text-lg font-semibold text-blue-600">
+                      {selectedLabourForView.labourId}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Name
+                    </label>
+                    <p className="text-lg text-gray-900">
+                      {selectedLabourForView.name}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Phone
+                    </label>
+                    <p className="text-lg text-gray-900">
+                      {selectedLabourForView.phone}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Category
+                    </label>
+                    <span
+                      className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
+                        selectedLabourForView.category === "supervisor"
+                          ? "bg-purple-100 text-purple-800"
+                          : selectedLabourForView.category === "site-engineer"
+                          ? "bg-green-100 text-green-800"
+                          : selectedLabourForView.category === "welder"
+                          ? "bg-orange-100 text-orange-800"
+                          : selectedLabourForView.category === "fitter"
+                          ? "bg-blue-100 text-blue-800"
+                          : "bg-gray-100 text-gray-800"
+                      }`}
+                    >
+                      {selectedLabourForView.category}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={() => {
+                      setShowViewModal(false);
+                      handleEditLabour(selectedLabourForView);
+                    }}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                  >
+                    Edit Labour
+                  </button>
+                  <button
+                    onClick={() => setShowViewModal(false)}
+                    className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Add Site Modal */}
       {showAddSite && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
