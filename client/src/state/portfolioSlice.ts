@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import axios from "axios";
 import type { RootState } from "./store";
+import API_CONFIG from "../config/api";
 
 
 export interface Project {
@@ -44,7 +45,7 @@ const initialState: PortfolioState = {
 
 // Thunk to fetch projects
 export const fetchProjects = createAsyncThunk("portfolio/fetchProjects", async () => {
-  const response = await axios.get("http://localhost:5001/api/portfolio");
+  const response = await axios.get(`${API_CONFIG.BASE_URL}/api/portfolio`);
   return response.data.projects as Project[];
 });
 
