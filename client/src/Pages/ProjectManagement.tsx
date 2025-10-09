@@ -18,6 +18,7 @@ import {
   AlertCircle,
   CheckCircle
 } from 'lucide-react';
+import API_CONFIG from '../config/api';
 
 interface Project {
   _id: string;
@@ -85,11 +86,11 @@ const ProjectManagement: React.FC = () => {
   const fetchProjects = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:5001/api/portfolio', {
+      const response = await fetch(`${API_CONFIG.baseURL}api/portfolio`, {
         credentials: 'include'
       });
       const data = await response.json();
-      
+
       if (data.success) {
         setProjects(data.projects);
       } else {
@@ -123,7 +124,7 @@ const ProjectManagement: React.FC = () => {
         images: formData.images.filter(img => img.url)
       };
 
-      const response = await fetch('http://localhost:5001/api/portfolio', {
+      const response = await fetch(`${API_CONFIG.baseURL}api/portfolio`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -167,7 +168,7 @@ const ProjectManagement: React.FC = () => {
         images: formData.images.filter(img => img.url)
       };
 
-      const response = await fetch(`http://localhost:5001/api/portfolio/${selectedProject.projectId}`, {
+      const response = await fetch(`${API_CONFIG.baseURL}api/portfolio/${selectedProject.projectId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
@@ -200,13 +201,13 @@ const ProjectManagement: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`http://localhost:5001/api/portfolio/${project.projectId}`, {
+      const response = await fetch(`${API_CONFIG.baseURL}api/portfolio/${project.projectId}`, {
         method: 'DELETE',
         credentials: 'include'
       });
 
       const data = await response.json();
-      
+
       if (data.success) {
         setSuccess('Project deleted successfully!');
         fetchProjects();

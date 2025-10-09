@@ -25,8 +25,9 @@ app.set('trust proxy', 1);
 // Enhanced CORS configuration for production
 const allowedOrigins = [
   'http://localhost:5173',
-  'http://localhost:5174', 
+  'http://localhost:5174',
   'http://localhost:3000',
+  'https://sonaiengineering.com',
   process.env.FRONTEND_URL,
   process.env.CLIENT_URL,
 ];

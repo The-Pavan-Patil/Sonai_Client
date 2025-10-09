@@ -22,6 +22,7 @@ import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import { useAuth } from "../context/AuthContext";
 import { LoaderOne } from "../components/loader";
+import API_CONFIG from '../config/api';
 
 // Define all interfaces
 interface Attendance {
@@ -209,7 +210,7 @@ export default function AdminDashboard() {
   const fetchLabours = async () => {
     try {
       setLoading(true);
-      const response = await axios.get("http://localhost:5001/api/labour");
+      const response = await axios.get(`${API_CONFIG.baseURL}api/labour`);
       setLabours(response.data.labours || []);
     } catch (error) {
       console.error("Error fetching labours:", error);
@@ -220,7 +221,7 @@ export default function AdminDashboard() {
 
   const fetchSites = async () => {
     try {
-      const response = await axios.get("http://localhost:5001/api/sites");
+      const response = await axios.get(`${API_CONFIG.baseURL}api/sites`);
       setSites(response.data.sites || []);
     } catch (error) {
       console.error("Error fetching sites:", error);
@@ -237,7 +238,7 @@ export default function AdminDashboard() {
         monthYear
       );
 
-      let url = `http://localhost:5001/api/attendance/labour/${labourId}`;
+      let url = `${API_CONFIG.baseURL}api/attendance/labour/${labourId}`;
       if (monthYear) {
         const [year, month] = monthYear.split("-");
         url += `?year=${parseInt(year)}&month=${parseInt(month)}`;
@@ -263,7 +264,7 @@ export default function AdminDashboard() {
   const handleAddSite = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await axios.post("http://localhost:5001/api/sites", newSite);
+      await axios.post(`${API_CONFIG.baseURL}api/sites`, newSite);
       setShowAddSite(false);
       setNewSite({
         name: "",
@@ -294,7 +295,7 @@ export default function AdminDashboard() {
 
     try {
       await axios.put(
-        `http://localhost:5001/api/sites/${editingSite.siteId}`,
+        `${API_CONFIG.baseURL}api/sites/${editingSite.siteId}`,
         editingSite
       );
       setShowEditSite(false);
@@ -314,7 +315,7 @@ export default function AdminDashboard() {
       )
     ) {
       try {
-        await axios.delete(`http://localhost:5001/api/sites/${site.siteId}`);
+        await axios.delete(`${API_CONFIG.baseURL}api/sites/${site.siteId}`);
         await fetchSites();
         alert("Site deleted successfully!");
       } catch (error) {
@@ -352,7 +353,7 @@ export default function AdminDashboard() {
 
     try {
       await axios.put(
-        `http://localhost:5001/api/labour/${editingLabour.labourId}`,
+        `${API_CONFIG.baseURL}api/labour/${editingLabour.labourId}`,
         editingLabour
       );
       setShowEditModal(false);
@@ -373,7 +374,7 @@ export default function AdminDashboard() {
     ) {
       try {
         await axios.delete(
-          `http://localhost:5001/api/labour/${labour.labourId}`
+          `${API_CONFIG.baseURL}api/labour/${labour.labourId}`
         );
         await fetchLabours();
         alert("Labour deleted successfully!");
@@ -389,7 +390,7 @@ export default function AdminDashboard() {
     console.log("Sending data:", newLabour);
     try {
       const response = await axios.post(
-        "http://localhost:5001/api/labour",
+        `${API_CONFIG.baseURL}api/labour`,
         newLabour
       );
       console.log("Response:", response.data);
@@ -432,7 +433,7 @@ export default function AdminDashboard() {
     try {
       console.log("Sending attendance data:", attendanceForm);
 
-      await axios.post("http://localhost:5001/api/attendance", attendanceForm);
+      await axios.post(`${API_CONFIG.baseURL}api/attendance`, attendanceForm);
 
       setShowAttendance(false);
       // Reset form
@@ -466,7 +467,7 @@ export default function AdminDashboard() {
       const { month, year, period, overtimeRate } = payrollForm;
 
       const response = await axios.get(
-        `http://localhost:5001/api/payroll/calculate-all`,
+        `${API_CONFIG.baseURL}api/payroll/calculate-all`,
         {
           params: { month, year, period, overtimeRate },
         }

@@ -2,6 +2,7 @@
 // context/AuthContext.tsx
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
+import API_CONFIG from '../config/api';
 
 interface User {
   id: string;
@@ -39,34 +40,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const checkAuthStatus = async () => {
     try {
-      const token = localStorage.getItem('auth_token');
-      if (!token) {
-        setIsLoading(false);
-        return;
-      }
-
-      // Set default auth header
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-
-      const response = await axios.get('http://localhost:5001/api/auth/verify');
-      if (response.data.success) {
-        setUser(response.data.user);
-      } else {
-        localStorage.removeItem('auth_token');
-        delete axios.defaults.headers.common['Authorization'];
+      const response = await fetch(`${API_CONFIG.baseURL}auth/verify`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setUser(data.user);
+        }
       }
     } catch (error) {
-      console.error('Auth check failed:', error);
-      localStorage.removeItem('auth_token');
-      delete axios.defaults.headers.common['Authorization'];
+      console.error('Auth check error:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
+
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
-      const response = await axios.post('http://localhost:5001/api/auth/login', {
+      const response = await axios.post(`${API_CONFIG.baseURL}api/auth/login`, {
         username,
         password
       });

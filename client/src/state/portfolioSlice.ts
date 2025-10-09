@@ -4,6 +4,7 @@ import type { RootState } from "./store";
 import API_CONFIG from "../config/api";
 
 
+
 export interface Project {
   projectId: string;
   title: string;
@@ -43,9 +44,12 @@ const initialState: PortfolioState = {
   error: null,
 };
 
+const API_BASE_URL = API_CONFIG.baseURL + 'api';
+
+
 // Thunk to fetch projects
-export const fetchProjects = createAsyncThunk("portfolio/fetchProjects", async () => {
-  const response = await axios.get(`${API_CONFIG.BASE_URL}/api/portfolio`);
+export const fetchProjects = createAsyncThunk( ``, async () => {
+  const response = await axios.get(`${API_BASE_URL}/portfolio`);
   return response.data.projects as Project[];
 });
 
