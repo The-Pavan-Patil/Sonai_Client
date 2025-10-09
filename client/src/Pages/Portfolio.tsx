@@ -646,7 +646,7 @@ export default function PortfolioPage() {
       </div>
 
       {/* Contact CTA */}
-      <ContactCTA />
+      
 
       {/* No Projects Message - Enhanced */}
       {filteredProjects.length === 0 && !loading && (
@@ -668,6 +668,7 @@ export default function PortfolioPage() {
           </button>
         </div>
       )}
+      <ContactCTA/>
     </div>
   );
 }
