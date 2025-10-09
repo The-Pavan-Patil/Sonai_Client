@@ -28,6 +28,7 @@ const allowedOrigins = [
   'http://localhost:5174',
   'http://localhost:3000',
   'https://sonaiengineering.com',
+  'https://sonaiengineering.in',
   process.env.FRONTEND_URL,
   process.env.CLIENT_URL,
 ];
