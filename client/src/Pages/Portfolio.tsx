@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { PointerHighlight } from "../components/pointer-highlight";
 import { LoaderOne } from "../components/loader";
+import { InfiniteMovingCards } from "../components/infinite-moving-cards";
 
 export default function PortfolioPage() {
   const dispatch = useDispatch<AppDispatch>();
@@ -296,43 +297,51 @@ export default function PortfolioPage() {
     ];
 
     return (
-      <div className="bg-gray-100 py-16 mb-16 rounded-2xl">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              What Our Clients Say
-            </h2>
-            <p className="text-gray-600">
-              Trusted by leading companies across industries
-            </p>
-          </div>
+      // <div className="bg-gray-100 py-16 mb-16 rounded-2xl">
+      //   <div className="max-w-6xl mx-auto px-6">
+      //     <div className="text-center mb-12">
+      //       <h2 className="text-3xl font-bold text-gray-900 mb-4">
+      //         What Our Clients Say
+      //       </h2>
+      //       <p className="text-gray-600">
+      //         Trusted by leading companies across industries
+      //       </p>
+      //     </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {testimonials.map((testimonial, index) => (
-              <div key={index} className="bg-white p-6 rounded-xl shadow-lg">
-                <div className="flex mb-4">
-                  {[...Array(testimonial.rating)].map((_, i) => (
-                    <Star
-                      key={i}
-                      className="w-5 h-5 text-yellow-400 fill-current"
-                    />
-                  ))}
-                </div>
-                <Quote className="w-8 h-8 text-blue-300 mb-4" />
-                <p className="text-gray-700 mb-4 italic">
-                  "{testimonial.quote}"
-                </p>
-                <div className="border-t pt-4">
-                  <p className="font-semibold text-gray-900">
-                    {testimonial.client}
-                  </p>
-                  <p className="text-sm text-gray-600">{testimonial.company}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      //     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      //       {testimonials.map((testimonial, index) => (
+      //         <div key={index} className="bg-white p-6 rounded-xl shadow-lg">
+      //           <div className="flex mb-4">
+      //             {[...Array(testimonial.rating)].map((_, i) => (
+      //               <Star
+      //                 key={i}
+      //                 className="w-5 h-5 text-yellow-400 fill-current"
+      //               />
+      //             ))}
+      //           </div>
+      //           <Quote className="w-8 h-8 text-blue-300 mb-4" />
+      //           <p className="text-gray-700 mb-4 italic">
+      //             "{testimonial.quote}"
+      //           </p>
+      //           <div className="border-t pt-4">
+      //             <p className="font-semibold text-gray-900">
+      //               {testimonial.client}
+      //             </p>
+      //             <p className="text-sm text-gray-600">{testimonial.company}</p>
+      //           </div>
+      //         </div>
+      //       ))}
+      //     </div>
+      //   </div>
+      // </div>
+       <div className="h-[40rem] rounded-md flex flex-col antialiased dark:bg-black dark:bg-grid-white/[0.05] items-center justify-center relative overflow-hidden">
+      <InfiniteMovingCards
+        items={testimonials.map((t) => { return {quote: t.quote, name: t.client, title: t.company} })}
+        direction="right"
+        speed="slow"
+        pauseOnHover={false}
+      />
+    </div>
     );
   };
 
