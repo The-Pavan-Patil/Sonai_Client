@@ -1,5 +1,5 @@
 
-import { Archive, Clipboard, Layout, type LucideIcon, Menu, Settings, User } from "lucide-react";
+import { Clipboard, Layout, type LucideIcon, Menu, User } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import type { RootState } from "../state/store";
 import { setSidebar } from "../state/sidebarSlice";

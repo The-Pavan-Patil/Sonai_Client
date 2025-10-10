@@ -14,7 +14,6 @@ import {
   DollarSign,
   Droplet,
   Filter,
-  Quote,
   TrendingUp,
   Users,
   Wind,
