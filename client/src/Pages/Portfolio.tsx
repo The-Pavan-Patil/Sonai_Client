@@ -533,6 +533,11 @@ export default function PortfolioPage() {
       <ServicesSection />
       <CompanyValues />
       <FeaturedProjects />
+      <div className="mt-5">
+        <h2 className="text-3xl font-bold text-gray-900 mb-6 mt-5 text-center">
+          Testimonials
+        </h2>
+      </div>
       <TestimonialsSection />
 
       <div className="mb-8">
