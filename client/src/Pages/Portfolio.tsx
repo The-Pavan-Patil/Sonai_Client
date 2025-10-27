@@ -43,13 +43,7 @@ export default function PortfolioPage() {
     dispatch(fetchProjects());
   }, [dispatch]);
 
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-96 gap-4">
-        <LoaderOne />
-      </div>
-    );
-  }
+  
 
 
 
